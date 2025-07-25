@@ -8,14 +8,14 @@ from utils.helpers import is_valid_currency
 DESCRIPTION, AMOUNT, CATEGORY = [0, 1, 2]
 
 # Categories
-def get_category_markup(txn_type):
-    if txn_type == "add_expense":
+def get_category_markup(transaction_type):
+    if transaction_type == "/add_expense":
         return ReplyKeyboardMarkup(
             [[cat] for cat in DEFAULT_EXPENSE_CATEGORIES],
             one_time_keyboard=True,
             resize_keyboard=True
         )
-    elif txn_type == "add_income":
+    elif transaction_type == "/add_income":
         return ReplyKeyboardMarkup(
             [[cat] for cat in DEFAULT_INCOME_CATEGORIES],
             one_time_keyboard=True,
@@ -26,7 +26,7 @@ def get_category_markup(txn_type):
 async def add(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Get the type of transaction from the function call in main
-    context.user_data["transaction_type"] = context.match.group(1)
+    context.user_data["transaction_type"] = update.message.text.split()[0]
     
     args = context.args
     if len(args) >= 2:
@@ -45,14 +45,15 @@ async def add(update: Update, context: ContextTypes.DEFAULT_TYPE):
             context.user_data['amount'] = float(amount)
 
         await update.message.reply_text(
-            f"Description: {description}\nAmount: {amount}\nNow choose a category:",
+            f"Description: {description}\nAmount: RM {context.user_data['amount']:.2f}\nNow choose a category:",
             reply_markup=get_category_markup(context.user_data["transaction_type"])
         )
 
         return CATEGORY
     else:
         # Case 2: interactive flow
-        await update.message.reply_text("Please enter the income description:")
+        print(f"This is the command {context.user_data["transaction_type"]}")
+        await update.message.reply_text("Please enter the description:")
         return DESCRIPTION
 
 # --- Step 1: Description ---
