@@ -16,8 +16,8 @@ A simple Telegram bot to track your expenses and income, view summaries, and exp
 
 ### 1. Clone this repo
 ```bash
-git clone https://github.com/yourusername/expense-tracker-bot.git
-cd expense-tracker-bot
+git clone https://github.com/DenHafiz69/expentrax.git
+cd expentrax
 ```
 
 ### 2. Create virtual environment
