@@ -1,8 +1,9 @@
-from ctypes import resize
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ContextTypes, ConversationHandler
 from config import DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES
 from utils.helpers import is_valid_currency
+
+from database.database import save_transaction  # ✅ Import from your db module
 
 # States
 DESCRIPTION, AMOUNT, CATEGORY = [0, 1, 2]
@@ -24,8 +25,6 @@ def get_category_markup(transaction_type):
 
 # User command "/add_income"
 async def add(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    
-    # Get the type of transaction from the function call in main
     context.user_data["transaction_type"] = update.message.text.split()[0]
     
     args = context.args
@@ -51,13 +50,11 @@ async def add(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         return CATEGORY
     else:
-        # Case 2: interactive flow
-        print(f"This is the command {context.user_data["transaction_type"]}")
         await update.message.reply_text("Please enter the description:")
         return DESCRIPTION
 
 # --- Step 1: Description ---
-async def get_description(update:Update, context: ContextTypes.DEFAULT_TYPE):
+async def get_description(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['description'] = update.message.text
     await update.message.reply_text("Enter the amount:")
     return AMOUNT
@@ -80,13 +77,24 @@ async def get_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def get_category(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['category'] = update.message.text
 
-    # Finalize
+    # Extract details
     desc = context.user_data['description']
     amount = context.user_data['amount']
     cat = context.user_data['category']
+    type_ = "income" if context.user_data["transaction_type"] == "/add_income" else "expense"
+    
+    # ✅ Save to database
+    save_transaction(
+        chat_id=update.effective_chat.id,
+        transaction_type=type_,
+        description=desc,
+        amount=amount,
+        category=cat
+        # message_id=update.message.message_id
+    )
 
     await update.message.reply_text(
-        f"✅ Income added:\n\n"
+        f"✅ {type_.capitalize()} added:\n\n"
         f"Description: {desc}\n"
         f"Amount: RM {amount:.2f}\n"
         f"Category: {cat}",

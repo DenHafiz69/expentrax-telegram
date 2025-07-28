@@ -1,4 +1,4 @@
-# 💸 Telegram Expense Tracker Bot
+# 💸 ExpenTrax - Telegram Expense Tracker Bot
 
 A simple Telegram bot to track your expenses and income, view summaries, and export reports — all from your chat.
 

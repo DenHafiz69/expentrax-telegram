@@ -3,6 +3,7 @@ import os
 import logging
 from telegram import Update
 from telegram.ext import filters, MessageHandler, ApplicationBuilder, ContextTypes, CommandHandler, ConversationHandler
+from database.database import init_db
 
 # Configure logging
 logging.basicConfig(
@@ -22,7 +23,8 @@ from handlers.start_handler import start_command
 # from handlers import expense_handler as expense
 # from handlers import income_handler as income
 
-from handlers import transaction_handler as transaction
+from handlers import transaction_handler as transaction, view_handler
+from handlers.view_handler import view_expenses
 
 # from handlers.summary_handler import summary_command
 
@@ -47,6 +49,8 @@ def register_handler(application):
     application.add_handler(get_transaction_handler("add_expense"))
     application.add_handler(get_transaction_handler("add_income"))
     
+    application.add_handler(CommandHandler("view_expenses", view_expenses))
+    
     # application.add_handler(CommandHandler("add_income", income.add))
     # application.add_handler(CommandHandler("summary", summary_command))
 
@@ -58,4 +62,5 @@ def main() -> None:
     application.run_polling()
 
 if __name__ == '__main__':
+    init_db()
     main()
