@@ -16,7 +16,7 @@ from config import BOT_TOKEN
 
 # Import commands from handlers
 from handlers.start_handler import start_command
-# from handlers.help_handler import help_command
+from handlers.help_handler import help_command
 
 # from handlers import expense_handler as expense
 # from handlers import income_handler as income
@@ -43,7 +43,7 @@ def register_handler(application):
 
     # Basic commands
     application.add_handler(CommandHandler("start", start_command))
-    # application.add_handler(CommandHandler("help", help_command))
+    application.add_handler(CommandHandler("help", help_command))
     
     application.add_handler(get_transaction_handler("add_expense"))
     application.add_handler(get_transaction_handler("add_income"))

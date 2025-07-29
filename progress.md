@@ -32,14 +32,13 @@ The core functionality of the bot is in place.
 
 ### 🚧 To-Do & In-Progress Features
 
-These features are planned (as seen in `README.md` or `start_handler.py`) but not yet implemented.
+These features are planned (as seen in `README.md`) but not yet implemented.
 
 - **New Commands**:
   - [ ] `/budget`: Handler for setting and viewing monthly budgets.
   - [ ] `/search`: Handler for finding specific transactions.
   - [ ] `/export`: Handler to export user data to a CSV file.
   - [ ] `/settings`: Handler for managing user preferences (e.g., currency, timezone).
-  - [ ] `/help`: A dedicated help command handler.
 
 - **Testing**:
   - [ ] Write unit tests for summary functions (`get_summary_periods`, `get_summary_data`).
