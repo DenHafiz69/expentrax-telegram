@@ -57,6 +57,31 @@ def get_recent_expenses(chat_id, limit=10):
     session.close()
     return expenses
 
+def get_search_results(chat_id: int, query: str, page: int = 1, page_size: int = 5):
+    """Searches for transactions by description with pagination."""
+    session = Session()
+    search_query = f"%{query}%"
+
+    # Get total count for pagination
+    total_count = (
+        session.query(Transaction)
+        .filter(Transaction.chat_id == chat_id, Transaction.description.ilike(search_query))
+        .count()
+    )
+
+    # Get paginated results
+    offset = (page - 1) * page_size
+    results = (
+        session.query(Transaction)
+        .filter(Transaction.chat_id == chat_id, Transaction.description.ilike(search_query))
+        .order_by(Transaction.timestamp.desc())
+        .offset(offset)
+        .limit(page_size)
+        .all()
+    )
+    session.close()
+    return results, total_count
+
 def get_summary_periods(chat_id: int, period: str):
     with Session() as session:
         query = session.query(Transaction.timestamp).filter(Transaction.chat_id == chat_id)

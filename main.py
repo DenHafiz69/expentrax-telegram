@@ -1,6 +1,6 @@
 import logging
 from telegram import Update
-from telegram.ext import filters, MessageHandler, ApplicationBuilder, CommandHandler, ConversationHandler
+from telegram.ext import filters, MessageHandler, ApplicationBuilder, CommandHandler, ConversationHandler, CallbackQueryHandler
 from database.database import init_db
 
 # Configure logging
@@ -23,7 +23,7 @@ from handlers.help_handler import help_command
 
 from handlers import transaction_handler as transaction, view_handler
 from handlers.view_handler import view_expenses
-from handlers import summary_handler as summary
+from handlers import summary_handler as summary, search_handler as search
 
 # from handlers.summary_handler import summary_command
 
@@ -59,6 +59,15 @@ def register_handler(application):
         fallbacks=[CommandHandler("cancel", summary.cancel)]
     ))
     
+    application.add_handler(ConversationHandler(
+        entry_points=[CommandHandler("search", search.search)],
+        states={
+            search.GET_QUERY: [MessageHandler(filters.TEXT & ~filters.COMMAND, search.process_search_query)],
+            search.PAGINATE: [CallbackQueryHandler(search.paginate_search)]
+        },
+        fallbacks=[CommandHandler("cancel", search.cancel)]
+    ))
+
     # application.add_handler(CommandHandler("add_income", income.add))
     # application.add_handler(CommandHandler("summary", summary_command))
 
