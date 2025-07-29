@@ -3,8 +3,12 @@
 from sqlalchemy import create_engine, extract, Column, Integer, String, Float, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from datetime import datetime
+from datetime import datetime, timedelta
 from collections import defaultdict
+import logging
+
+# Enable SQLAlchemy logging
+logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
 # Setup
 DATABASE_URL = "sqlite:///transactions.db"
@@ -76,14 +80,19 @@ def get_summary_periods(chat_id: int, period: str):
             # return formatted like: "2025-W30 (Jul 22 - Jul 28)"
             formatted = []
             for (year, week), dates in weeks.items():
-                start_of_week = min(dates)
-                end_of_week = max(dates)
+                # Calculate the start date of the week
+                start_of_week = datetime.strptime(f"{year}-W{week}-1", "%G-W%V-%u")
+                # Calculate the end date of the week (Sunday)
+                end_of_week = start_of_week + timedelta(days=6)
                 formatted.append(f"{year}-W{week} ({start_of_week.strftime('%b %d')} - {end_of_week.strftime('%b %d')})")
             return sorted(formatted, reverse=True)
 
 def get_summary_data(chat_id: int, period: str, option: str):
     with Session() as session:
-        query = session.query(Transaction).filter(Transaction.chat_id == chat_id)
+        start_of_week = None
+        end_of_week = None
+
+        query = session.query(Transaction).filter(Transaction.chat_id == chat_id).order_by(Transaction.timestamp.asc())
 
         if period == "yearly":
             year = int(option)
@@ -98,17 +107,21 @@ def get_summary_data(chat_id: int, period: str, option: str):
 
         elif period == "weekly":
             # option like: "2025-W30"
-            week_str = option.split()[0]  # "2025-W30"
+            week_str = option.split(" ")[0]  # "2025-W30"
             year, week = map(int, week_str.split("-W"))
             # get dates in that ISO week
-            query = query.all()
-            filtered = []
-            for t in query:
-                if t.timestamp.isocalendar()[0] == year and t.timestamp.isocalendar()[1] == week:
-                    filtered.append(t)
-            return filtered
+            start_of_week = datetime.strptime(f"{year}-W{week}-1", "%G-W%V-%u")
+            # Go to the start of the next week to make the range exclusive at the end
+            end_of_week = start_of_week + timedelta(days=7)
 
-        return query.order_by(Transaction.timestamp.asc()).all()
+            query = query.filter(Transaction.timestamp >= start_of_week)
+            query = query.filter(Transaction.timestamp < end_of_week)
+
+        logging.info(f"get_summary_data: start_of_week={start_of_week}, end_of_week={end_of_week}" if start_of_week and end_of_week else "get_summary_data: No weekly dates")
+
+        logging.info(f"get_summary_data: chat_id={chat_id}, period={period}, option={option}, transaction count={query.count()}")        
+        
+        return query.all()
 
 # Create the table
 def init_db():

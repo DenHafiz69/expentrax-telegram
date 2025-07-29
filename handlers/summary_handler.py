@@ -50,22 +50,30 @@ async def send_summary(update: Update, context: ContextTypes.DEFAULT_TYPE):
     option = context.user_data["option"]
 
     summary = get_summary_data(chat_id, period, option)
-
+    print(f"Summary data: {summary}")
     if not summary:
         await update.message.reply_text("No transactions found.", reply_markup=ReplyKeyboardRemove())
         return ConversationHandler.END
 
-    total_income = sum(item["amount"] for item in summary if item["type"] == "income")
-    total_expense = sum(item["amount"] for item in summary if item["type"] == "expense")
+    # Use defaultdict for efficient aggregation
+    totals = defaultdict(float)
+    for item in summary:
+        if item.transaction_type == "income":
+            totals["income"] += item.amount
+        elif item.transaction_type == "expense":
+            totals["expense"] += item.amount
+    total_income = totals["income"]
+    total_expense = totals["expense"]
     balance = total_income - total_expense
-    days_count = len(set(tx["date"].date() for tx in summary)) or 1
+    days_count = len({transaction.timestamp.date() for transaction in summary}) or 1
 
     avg_income = total_income / days_count
     avg_expense = total_expense / days_count
 
     text = (
         f"📊 Summary ({period.title()} - {option}):\n\n"
-        f"Income: RM {total_income:.2f}\n"
+        f"Income: RM {total_income:.2f}\n" # Ensure totals are not None before formatting
+
         f"Expense: RM {total_expense:.2f}\n"
         f"Balance: RM {balance:.2f}\n\n"
         f"Daily Avg Income: RM {avg_income:.2f}\n"
@@ -78,4 +86,3 @@ async def send_summary(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Summary cancelled.", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
-
