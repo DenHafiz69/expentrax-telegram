@@ -5,13 +5,13 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime, timedelta
 from collections import defaultdict
+from config import DEFAULT_CURRENCY, DEFAULT_TIMEZONE, DATABASE_URL
 import logging
 
 # Enable SQLAlchemy logging
 logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
 # Setup
-DATABASE_URL = "sqlite:///transactions.db"
 engine = create_engine(DATABASE_URL)
 Base = declarative_base()
 Session = sessionmaker(bind=engine)
@@ -26,6 +26,13 @@ class Transaction(Base):
     amount = Column(Float)
     category = Column(String)
     chat_id = Column(Integer)
+
+# User settings model
+class UserSettings(Base):
+    __tablename__ = "user_settings"
+    chat_id = Column(Integer, primary_key=True)
+    currency = Column(String, default=DEFAULT_CURRENCY)
+    timezone = Column(String, default=DEFAULT_TIMEZONE)
 
 # Create tables
 Base.metadata.create_all(engine)
@@ -56,6 +63,30 @@ def get_recent_expenses(chat_id, limit=10):
     )
     session.close()
     return expenses
+
+def get_user_settings(chat_id: int):
+    """Gets user settings, creating them with defaults if they don't exist."""
+    session = Session()
+    settings = session.query(UserSettings).filter_by(chat_id=chat_id).first()
+    if not settings:
+        settings = UserSettings(
+            chat_id=chat_id,
+            currency=DEFAULT_CURRENCY,
+            timezone=DEFAULT_TIMEZONE
+        )
+        session.add(settings)
+        session.commit()
+    session.close()
+    return settings
+
+def update_user_setting(chat_id: int, key: str, value: str):
+    """Updates a specific user setting."""
+    session = Session()
+    settings = session.query(UserSettings).filter_by(chat_id=chat_id).first()
+    if settings:
+        setattr(settings, key, value)
+        session.commit()
+    session.close()
 
 def get_search_results(chat_id: int, query: str, page: int = 1, page_size: int = 5):
     """Searches for transactions by description with pagination."""
