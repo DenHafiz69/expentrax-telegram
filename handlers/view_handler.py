@@ -5,7 +5,7 @@ from datetime import datetime
 
 async def view_expenses(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
-    expenses = get_recent_expenses(chat_id)
+    expenses = get_recent_expenses(chat_id, limit=3)
 
     if not expenses:
         await update.message.reply_text("You don't have any expenses recorded yet.")
