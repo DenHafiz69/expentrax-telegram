@@ -12,20 +12,13 @@ logging.basicConfig(
 # Import from config.py
 from config import BOT_TOKEN
 
-# Initialize database connection
-
 # Import commands from handlers
 from handlers.start_handler import start_command
 from handlers.help_handler import help_command
 
-# from handlers import expense_handler as expense
-# from handlers import income_handler as income
-
 from handlers import transaction_handler as transaction, view_handler
 from handlers.view_handler import view_expenses
-from handlers import summary_handler as summary, search_handler as search
-
-# from handlers.summary_handler import summary_command
+from handlers import summary_handler as summary, search_handler as search, settings_handler as settings
 
 def get_transaction_handler(command: str):
     return ConversationHandler(
@@ -68,8 +61,17 @@ def register_handler(application):
         fallbacks=[CommandHandler("cancel", search.cancel)]
     ))
 
-    # application.add_handler(CommandHandler("add_income", income.add))
-    # application.add_handler(CommandHandler("summary", summary_command))
+    application.add_handler(ConversationHandler(
+        entry_points=[CommandHandler("settings", settings.settings_start)],
+        states={
+            settings.SHOW_SETTINGS: [
+                CallbackQueryHandler(settings.choose_setting_to_update, pattern="^settings_change_"),
+                CallbackQueryHandler(settings.close_settings, pattern="^settings_close$")
+            ],
+            settings.GET_NEW_VALUE: [MessageHandler(filters.TEXT & ~filters.COMMAND, settings.get_new_setting_value)]
+        },
+        fallbacks=[CommandHandler("cancel", settings.cancel)]
+    ))
 
 def main() -> None:
     application = ApplicationBuilder().token(BOT_TOKEN).build()
