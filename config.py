@@ -13,7 +13,7 @@ BOT_USERNAME = os.getenv('BOT_USERNAME', 'expentrax_bot')
 # WEBHOOK_URL = os.getenv('WEBHOOK_URL')
 
 # Database
-DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///expenses.db')
+DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///transactions.db')
 
 # Application Settings
 DEFAULT_CURRENCY = os.getenv('DEFAULT_CURRENCY', 'RM')
