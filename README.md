@@ -48,10 +48,11 @@ python main.py
 
 ## 🤖 Available Commands
 
-| Command         | Function                     |
+| Command        | Function                     |
 |----------------|------------------------------|
 | /add_expense   | Add an expense               |
 | /add_income    | Add an income                |
+| /view_expenses | View recent expenses         |
 | /summary       | Monthly/yearly summary       |
 | /budget        | Set/view budget              |
 | /search        | Search transactions          |
