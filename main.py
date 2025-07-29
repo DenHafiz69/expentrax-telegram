@@ -1,8 +1,6 @@
-from importlib.metadata import entry_points
-import os
 import logging
 from telegram import Update
-from telegram.ext import filters, MessageHandler, ApplicationBuilder, ContextTypes, CommandHandler, ConversationHandler
+from telegram.ext import filters, MessageHandler, ApplicationBuilder, CommandHandler, ConversationHandler
 from database.database import init_db
 
 # Configure logging
@@ -25,6 +23,7 @@ from handlers.start_handler import start_command
 
 from handlers import transaction_handler as transaction, view_handler
 from handlers.view_handler import view_expenses
+from handlers import summary_handler as summary
 
 # from handlers.summary_handler import summary_command
 
@@ -50,6 +49,15 @@ def register_handler(application):
     application.add_handler(get_transaction_handler("add_income"))
     
     application.add_handler(CommandHandler("view_expenses", view_expenses))
+    
+    application.add_handler(ConversationHandler(
+        entry_points=[CommandHandler("summary", summary.start)],
+        states={
+            0: [MessageHandler(filters.TEXT & ~filters.COMMAND, summary.choose_period)],
+            1: [MessageHandler(filters.TEXT & ~filters.COMMAND, summary.choose_option)]
+        },
+        fallbacks=[CommandHandler("cancel", summary.cancel)]
+    ))
     
     # application.add_handler(CommandHandler("add_income", income.add))
     # application.add_handler(CommandHandler("summary", summary_command))
