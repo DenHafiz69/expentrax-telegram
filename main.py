@@ -3,14 +3,14 @@ from telegram import Update
 from telegram.ext import filters, MessageHandler, ApplicationBuilder, CommandHandler, ConversationHandler, CallbackQueryHandler
 from database.database import init_db
 
+# Import from config.py
+from config import BOT_TOKEN, LOG_LEVEL, LOG_FORMAT
+
 # Configure logging
 logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
+    format=LOG_FORMAT,
+    level=LOG_LEVEL
 )
-
-# Import from config.py
-from config import BOT_TOKEN
 
 # Import commands from handlers
 from handlers.start_handler import start_command
@@ -18,7 +18,7 @@ from handlers.help_handler import help_command
 
 from handlers import transaction_handler as transaction, view_handler
 from handlers.view_handler import view_expenses
-from handlers import summary_handler as summary, search_handler as search, settings_handler as settings
+from handlers import summary_handler as summary, search_handler as search
 
 def get_transaction_handler(command: str):
     return ConversationHandler(
@@ -56,21 +56,12 @@ def register_handler(application):
         entry_points=[CommandHandler("search", search.search)],
         states={
             search.GET_QUERY: [MessageHandler(filters.TEXT & ~filters.COMMAND, search.process_search_query)],
-            search.PAGINATE: [CallbackQueryHandler(search.paginate_search)]
+            search.PAGINATE: [
+                CallbackQueryHandler(search.paginate_search, pattern="^search_page_"),
+                CallbackQueryHandler(search.close_search, pattern="^search_close$")
+            ]
         },
         fallbacks=[CommandHandler("cancel", search.cancel)]
-    ))
-
-    application.add_handler(ConversationHandler(
-        entry_points=[CommandHandler("settings", settings.settings_start)],
-        states={
-            settings.SHOW_SETTINGS: [
-                CallbackQueryHandler(settings.choose_setting_to_update, pattern="^settings_change_"),
-                CallbackQueryHandler(settings.close_settings, pattern="^settings_close$")
-            ],
-            settings.GET_NEW_VALUE: [MessageHandler(filters.TEXT & ~filters.COMMAND, settings.get_new_setting_value)]
-        },
-        fallbacks=[CommandHandler("cancel", settings.cancel)]
     ))
 
 def main() -> None:

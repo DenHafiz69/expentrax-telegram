@@ -1,6 +1,6 @@
 from telegram import Update, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler, CallbackQueryHandler
-from database.database import get_search_results
+from database.database import get_search_results, get_user_settings
 import math
 
 # States
@@ -12,7 +12,7 @@ async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("What transaction are you looking for? Please type a keyword to search.")
     return GET_QUERY
 
-def _build_search_message_and_keyboard(results, query, current_page, total_count):
+def _build_search_message_and_keyboard(results, query, current_page, total_count, currency_symbol: str):
     """Helper function to build the message and keyboard for search results."""
     if not results:
         return "No transactions found.", None
@@ -25,7 +25,7 @@ def _build_search_message_and_keyboard(results, query, current_page, total_count
             f"{icon} *{tx.transaction_type.title()}*\n"
             f"📅 {date_str}\n"
             f"💬 {tx.description}\n"
-            f"💸 RM {tx.amount:.2f}  |  🏷️ {tx.category}\n\n"
+            f"💸 {currency_symbol} {tx.amount:.2f}  |  🏷️ {tx.category}\n\n"
         )
 
     # --- Pagination Keyboard ---
@@ -53,13 +53,14 @@ async def process_search_query(update: Update, context: ContextTypes.DEFAULT_TYP
     context.user_data['search_query'] = query
     context.user_data['search_page'] = 1
 
+    settings = get_user_settings(chat_id)
     results, total_count = get_search_results(chat_id, query, page=1, page_size=PAGE_SIZE)
 
     if total_count == 0:
         await update.message.reply_text(f"No transactions found matching '{query}'.", reply_markup=ReplyKeyboardRemove())
         return ConversationHandler.END
 
-    message, keyboard = _build_search_message_and_keyboard(results, query, 1, total_count)
+    message, keyboard = _build_search_message_and_keyboard(results, query, 1, total_count, settings.currency)
 
     await update.message.reply_text(message, reply_markup=keyboard, parse_mode="Markdown")
     return PAGINATE
@@ -69,11 +70,6 @@ async def paginate_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     callback_data = update.callback_query.data
 
-    if callback_data == 'search_close':
-        await update.callback_query.edit_message_text("Search closed.")
-        context.user_data.clear()
-        return ConversationHandler.END
-    
     # callback_data is like "search_page_2"
     try:
         page = int(callback_data.split('_')[-1])
@@ -89,14 +85,23 @@ async def paginate_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.callback_query.edit_message_text("Your search session has expired. Please start a new search.")
         return ConversationHandler.END
 
+    settings = get_user_settings(chat_id)
     context.user_data['search_page'] = page
     results, total_count = get_search_results(chat_id, query, page=page, page_size=PAGE_SIZE)
-    message, keyboard = _build_search_message_and_keyboard(results, query, page, total_count)
+    message, keyboard = _build_search_message_and_keyboard(results, query, page, total_count, settings.currency)
 
     await update.callback_query.edit_message_text(text=message, reply_markup=keyboard, parse_mode="Markdown")
     return PAGINATE
 
+async def close_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Closes the search results message."""
+    await update.callback_query.answer()
+    await update.callback_query.edit_message_text("Search closed.")
+    context.user_data.clear()
+    return ConversationHandler.END
+
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Cancels the search operation."""
     await update.message.reply_text("Search cancelled.", reply_markup=ReplyKeyboardRemove())
+    context.user_data.clear()
     return ConversationHandler.END

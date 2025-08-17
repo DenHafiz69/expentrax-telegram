@@ -38,7 +38,6 @@ These features are planned (as seen in `README.md` or `start_handler.py`) but no
   - [ ] `/budget`: Handler for setting and viewing monthly budgets.
   - [x] `/search`: Handler for finding specific transactions.
   - [ ] `/export`: Handler to export user data to a CSV file.
-  - [ ] `/settings`: Handler for managing user preferences (e.g., currency, timezone).
   - [x] `/help`: A dedicated help command handler.
 
 <!-- - **Testing**:
