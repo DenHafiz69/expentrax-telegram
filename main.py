@@ -16,7 +16,7 @@ logging.basicConfig(
 from handlers.start_handler import start_command
 from handlers.help_handler import help_command
 
-from handlers import transaction_handler as transaction, view_handler
+from handlers import transaction_handler as transaction
 from handlers.view_handler import view_expenses
 from handlers import summary_handler as summary, search_handler as search
 
@@ -28,7 +28,8 @@ def get_transaction_handler(command: str):
             1: [MessageHandler(filters.TEXT & ~filters.COMMAND, transaction.get_amount)],
             2: [MessageHandler(filters.TEXT & ~filters.COMMAND, transaction.get_category)],
         },
-        fallbacks=[CommandHandler("cancel", transaction.cancel)]
+        fallbacks=[CommandHandler("cancel", transaction.cancel)],
+        allow_reentry=True
     )
 
 # Function to register all handler
@@ -49,7 +50,8 @@ def register_handler(application):
             0: [MessageHandler(filters.TEXT & ~filters.COMMAND, summary.choose_period)],
             1: [MessageHandler(filters.TEXT & ~filters.COMMAND, summary.choose_option)]
         },
-        fallbacks=[CommandHandler("cancel", summary.cancel)]
+        fallbacks=[CommandHandler("cancel", summary.cancel)],
+        allow_reentry=True
     ))
     
     application.add_handler(ConversationHandler(
@@ -61,7 +63,8 @@ def register_handler(application):
                 CallbackQueryHandler(search.close_search, pattern="^search_close$")
             ]
         },
-        fallbacks=[CommandHandler("cancel", search.cancel)]
+        fallbacks=[CommandHandler("cancel", search.cancel)],
+        allow_reentry=True
     ))
 
 def main() -> None:

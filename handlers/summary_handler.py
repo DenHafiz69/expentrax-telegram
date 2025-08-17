@@ -65,19 +65,12 @@ async def send_summary(update: Update, context: ContextTypes.DEFAULT_TYPE):
     total_income = totals["income"]
     total_expense = totals["expense"]
     balance = total_income - total_expense
-    days_count = len({transaction.timestamp.date() for transaction in summary}) or 1
-
-    avg_income = total_income / days_count
-    avg_expense = total_expense / days_count
 
     text = (
         f"📊 Summary ({period.title()} - {option}):\n\n"
         f"Income: RM {total_income:.2f}\n" # Ensure totals are not None before formatting
-
         f"Expense: RM {total_expense:.2f}\n"
-        f"Balance: RM {balance:.2f}\n\n"
-        f"Daily Avg Income: RM {avg_income:.2f}\n"
-        f"Daily Avg Expense: RM {avg_expense:.2f}"
+        f"Balance: RM {balance:.2f}"
     )
 
     await update.message.reply_text(text, reply_markup=ReplyKeyboardRemove())

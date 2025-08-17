@@ -13,7 +13,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "📊 /summary – Get a financial summary\n"
         "🔍 /search – Find specific transactions\n\n"
         "*Upcoming Features:*\n"
-        "💰 /budget, /export, /settings\n\n"
+        "💰 /budget, /export\n\n"
         "You can type /cancel at any time to stop an ongoing operation."
     )
     await update.message.reply_text(help_text, parse_mode="Markdown")

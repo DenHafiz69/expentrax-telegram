@@ -57,7 +57,7 @@ python main.py
 | /budget        | Set/view budget              |
 | /search        | Search transactions          |
 | /export        | Export data as CSV           |
-| /settings      | Currency, timezone, etc.     |
+<!-- | /settings      | Currency, timezone, etc.     | -->
 | /help          | Get help info                |
 
 ---

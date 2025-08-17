@@ -35,7 +35,7 @@ The core functionality of the bot is in place.
 These features are planned (as seen in `README.md` or `start_handler.py`) but not yet implemented.
 
 - **New Commands**:
-  - [ ] `/budget`: Handler for setting and viewing monthly budgets.
+  - [ ] `/budget`: Handler for viewing monthly budgets.
   - [x] `/search`: Handler for finding specific transactions.
   - [ ] `/export`: Handler to export user data to a CSV file.
   - [x] `/help`: A dedicated help command handler.
