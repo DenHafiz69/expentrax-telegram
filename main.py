@@ -1,5 +1,6 @@
 import logging
 from telegram import Update
+from datetime import time
 from telegram.ext import filters, MessageHandler, ApplicationBuilder, CommandHandler, ConversationHandler, CallbackQueryHandler
 from database.database import init_db
 
@@ -17,8 +18,8 @@ from handlers.start_handler import start_command
 from handlers.help_handler import help_command
 
 from handlers import transaction_handler as transaction
-from handlers.view_handler import view_expenses
-from handlers import summary_handler as summary, search_handler as search, export_handler as export
+from handlers import view_handler, summary_handler as summary, search_handler as search
+from handlers import export_handler as export, budget_handler as budget, job_handler as jobs
 
 def get_transaction_handler(command: str):
     return ConversationHandler(
@@ -39,10 +40,10 @@ def register_handler(application):
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CommandHandler("help", help_command))
     
+    # Transaction Handlers
     application.add_handler(get_transaction_handler("add_expense"))
     application.add_handler(get_transaction_handler("add_income"))
-    
-    application.add_handler(CommandHandler("view_expenses", view_expenses))
+    application.add_handler(CommandHandler("view_expenses", view_handler.view_expenses))
     
     application.add_handler(ConversationHandler(
         entry_points=[CommandHandler("summary", summary.start)],
@@ -75,11 +76,30 @@ def register_handler(application):
         fallbacks=[CommandHandler("cancel", export.cancel)],
         allow_reentry=True
     ))
+    
+    # Budget Handlers
+    set_budget_conversation = ConversationHandler(
+        entry_points=[
+            CommandHandler("set_budget", budget.set_budget_start),
+            CallbackQueryHandler(budget.prompt_set_budget, pattern="^prompt_set_budget$")
+        ],
+        states={
+            budget.GET_BUDGET_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, budget.receive_budget_amount)]
+        },
+        fallbacks=[CommandHandler("cancel", budget.cancel)],
+        allow_reentry=True
+    )
+    application.add_handler(set_budget_conversation)
+    application.add_handler(CommandHandler("view_budget", budget.view_budget))
 
 def main() -> None:
     application = ApplicationBuilder().token(BOT_TOKEN).build()
 
     register_handler(application)
+
+    # Schedule the daily job for budget prompts
+    # Runs every day at 9:00 AM (bot's local time)
+    application.job_queue.run_daily(jobs.check_monthly_budget_prompt, time=time(hour=9, minute=0))
     
     application.run_polling()
 

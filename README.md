@@ -54,11 +54,12 @@ python main.py
 | /add_income    | Add an income                |
 | /view_expenses | View recent expenses         |
 | /summary       | Monthly/yearly summary       |
-| /budget        | Set/view budget              |
+| /set_budget    | Set your budget for the current month |
+| /view_budget   | View your spending against your budget |
 | /search        | Search transactions          |
 | /export        | Export data as CSV           |
-<!-- | /settings      | Currency, timezone, etc.     | -->
 | /help          | Get help info                |
+<!-- | /settings      | Currency, timezone, etc.     | -->
 
 ---
 

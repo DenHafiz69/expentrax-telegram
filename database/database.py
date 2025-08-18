@@ -1,6 +1,6 @@
 # database/database.py
 
-from sqlalchemy import create_engine, extract, Column, Integer, String, Float, DateTime
+from sqlalchemy import create_engine, extract, Column, Integer, String, Float, DateTime, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime, timedelta
@@ -33,6 +33,15 @@ class UserSettings(Base):
     chat_id = Column(Integer, primary_key=True)
     currency = Column(String, default=DEFAULT_CURRENCY)
     timezone = Column(String, default=DEFAULT_TIMEZONE)
+
+# Budget model
+class Budget(Base):
+    __tablename__ = "budgets"
+    id = Column(Integer, primary_key=True)
+    chat_id = Column(Integer, nullable=False)
+    period = Column(String, nullable=False)  # e.g., "2025-07"
+    amount = Column(Float, nullable=False)
+    __table_args__ = (UniqueConstraint('chat_id', 'period', name='_chat_id_period_uc'),)
 
 # Create tables
 Base.metadata.create_all(engine)
@@ -178,6 +187,30 @@ def get_summary_data(chat_id: int, period: str, option: str):
         logging.info(f"get_summary_data: chat_id={chat_id}, period={period}, option={option}, transaction count={query.count()}")        
         
         return query.all()
+
+def set_or_update_budget(chat_id: int, period: str, amount: float):
+    """Sets or updates the budget for a given user and period."""
+    with Session() as session:
+        budget = session.query(Budget).filter_by(chat_id=chat_id, period=period).first()
+        if budget:
+            budget.amount = amount
+        else:
+            budget = Budget(chat_id=chat_id, period=period, amount=amount)
+            session.add(budget)
+        session.commit()
+
+def get_budget_for_month(chat_id: int, period: str):
+    """Retrieves the budget for a given user and period."""
+    with Session() as session:
+        return session.query(Budget).filter_by(chat_id=chat_id, period=period).first()
+
+def get_all_user_chat_ids():
+    """Retrieves all unique chat_ids that have interacted with the bot."""
+    with Session() as session:
+        # Querying UserSettings is a good way to find active users
+        user_chat_ids = session.query(UserSettings.chat_id).distinct().all()
+        # .all() returns a list of tuples, so we extract the first element
+        return [chat_id[0] for chat_id in user_chat_ids]
 
 # Create the table
 def init_db():
