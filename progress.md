@@ -1,6 +1,6 @@
 Project: ExpenTrax - Telegram Expense Tracker Bot
 Version: 1.0
-Last Updated: 2025-07-29
+Last Updated: 2025-08-18
 
 This document tracks the development progress of the ExpenTrax bot.
 
