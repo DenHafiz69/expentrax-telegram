@@ -2,6 +2,10 @@
 
 A simple Telegram bot to track your expenses and income, view summaries, and export reports — all from your chat.
 
+## 🕶 Motivations
+
+This bot was created to replace my old workflow for managing income and expenses. Previously, I used Google Sheets with a ready-made template to track my expenses. The advantage of using that was that I could access it on both my phone and laptop, and it synchronized nicely.
+
 ## ✅ Features
 
 - Add expense and income entries
