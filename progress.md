@@ -25,6 +25,12 @@ The core functionality of the bot is in place.
   - [x] Yearly, Monthly, and Weekly summary period options.
   - [x] Database logic to fetch and filter data for all summary types.
 
+- **Command Handlers**:
+  - [x] `/budget`: Handler for setting and viewing monthly budgets.
+  - [x] `/search`: Handler for finding specific transactions with pagination.
+  - [x] `/export`: Handler to export user data to a CSV file.
+  - [x] `/help`: A dedicated help command handler.
+
 <!-- - **Testing**:
   - [x] Basic unit tests for `save_transaction` and `get_recent_expenses`. -->
 
@@ -33,11 +39,6 @@ The core functionality of the bot is in place.
 ### 🚧 To-Do & In-Progress Features
 
 These features are planned (as seen in `README.md` or `start_handler.py`) but not yet implemented.
-- **New Commands**:
-  - [x] `/budget`: Handler for setting and viewing monthly budgets.
-  - [x] `/search`: Handler for finding specific transactions.
-  - [x] `/export`: Handler to export user data to a CSV file.
-  - [x] `/help`: A dedicated help command handler.
 
 <!-- - **Testing**:
   - [ ] Write unit tests for summary functions (`get_summary_periods`, `get_summary_data`).
