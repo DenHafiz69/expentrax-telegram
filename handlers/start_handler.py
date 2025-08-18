@@ -12,7 +12,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "💰 /budget – Set or view your monthly budget\n"
         "🔍 /search – Find specific transactions\n"
         "📤 /export – Export your data as CSV\n"
-        "⚙️ /settings – Change currency, timezone, etc.\n"
+        # "⚙️ /settings – Change currency, timezone, etc.\n"
         "❓ /help – Get help using the bot\n\n"
         "Let’s get started!"
     )
