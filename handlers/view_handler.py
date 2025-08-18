@@ -1,7 +1,6 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 from database.database import get_recent_expenses
-from datetime import datetime
 
 async def view_expenses(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id

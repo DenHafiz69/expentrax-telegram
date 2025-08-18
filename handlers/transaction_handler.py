@@ -1,7 +1,7 @@
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ContextTypes, ConversationHandler
 from config import DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES
-from utils.helpers import is_valid_currency
+from utils.validators import is_valid_currency
 
 from database.database import save_transaction  # ✅ Import from your db module
 

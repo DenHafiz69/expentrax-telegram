@@ -1,7 +1,6 @@
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ContextTypes, ConversationHandler
 from database.database import get_summary_periods, get_summary_data
-from datetime import datetime
 from collections import defaultdict
 
 # States

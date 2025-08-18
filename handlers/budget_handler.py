@@ -3,7 +3,7 @@ from telegram.ext import ContextTypes, ConversationHandler
 from datetime import datetime
 
 from database.database import set_or_update_budget, get_budget_for_month, get_summary_data, get_user_settings
-from utils.helpers import is_valid_currency
+from utils.validators import is_valid_currency
 
 # States for conversation
 GET_BUDGET_AMOUNT = 0
