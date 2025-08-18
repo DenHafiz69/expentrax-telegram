@@ -18,7 +18,7 @@ from handlers.help_handler import help_command
 
 from handlers import transaction_handler as transaction
 from handlers.view_handler import view_expenses
-from handlers import summary_handler as summary, search_handler as search
+from handlers import summary_handler as summary, search_handler as search, export_handler as export
 
 def get_transaction_handler(command: str):
     return ConversationHandler(
@@ -64,6 +64,15 @@ def register_handler(application):
             ]
         },
         fallbacks=[CommandHandler("cancel", search.cancel)],
+        allow_reentry=True
+    ))
+    
+    application.add_handler(ConversationHandler(
+        entry_points=[CommandHandler("export", export.export_start)],
+        states={
+            export.CHOOSE_MONTH: [MessageHandler(filters.TEXT & ~filters.COMMAND, export.generate_csv)]
+        },
+        fallbacks=[CommandHandler("cancel", export.cancel)],
         allow_reentry=True
     ))
 

@@ -52,7 +52,7 @@ def save_transaction(chat_id, transaction_type, description, amount, category):
     session.close()
 
 # View function
-def get_recent_expenses(chat_id, limit=10):
+def get_recent_expenses(chat_id, limit=3):
     session = Session()
     expenses = (
         session.query(Transaction)

@@ -37,7 +37,7 @@ These features are planned (as seen in `README.md` or `start_handler.py`) but no
 - **New Commands**:
   - [ ] `/budget`: Handler for viewing monthly budgets.
   - [x] `/search`: Handler for finding specific transactions.
-  - [ ] `/export`: Handler to export user data to a CSV file.
+  - [x] `/export`: Handler to export user data to a CSV file.
   - [x] `/help`: A dedicated help command handler.
 
 <!-- - **Testing**:
