@@ -77,20 +77,20 @@ def register_handler(application):
         allow_reentry=True
     ))
     
-    # Budget Handlers
-    set_budget_conversation = ConversationHandler(
+    # Budget Conversation Handler
+    budget_conversation = ConversationHandler(
         entry_points=[
-            CommandHandler("set_budget", budget.set_budget_start),
+            CommandHandler("budget", budget.start),
             CallbackQueryHandler(budget.prompt_set_budget, pattern="^prompt_set_budget$")
         ],
         states={
+            budget.CHOOSE_ACTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, budget.handle_choice)],
             budget.GET_BUDGET_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, budget.receive_budget_amount)]
         },
         fallbacks=[CommandHandler("cancel", budget.cancel)],
         allow_reentry=True
     )
-    application.add_handler(set_budget_conversation)
-    application.add_handler(CommandHandler("view_budget", budget.view_budget))
+    application.add_handler(budget_conversation)
 
 def main() -> None:
     application = ApplicationBuilder().token(BOT_TOKEN).build()

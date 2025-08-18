@@ -58,8 +58,7 @@ python main.py
 | /add_income    | Add an income                |
 | /view_expenses | View recent expenses         |
 | /summary       | Monthly/yearly summary       |
-| /set_budget    | Set your budget for the current month |
-| /view_budget   | View your spending against your budget |
+| /budget        | Set or view your monthly budget |
 | /search        | Search transactions          |
 | /export        | Export data as CSV           |
 | /help          | Get help info                |
