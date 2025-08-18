@@ -1,5 +1,5 @@
 from telegram import Update, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ContextTypes, ConversationHandler, CallbackQueryHandler
+from telegram.ext import ContextTypes, ConversationHandler
 from database.database import get_search_results, get_user_settings
 import math
 
