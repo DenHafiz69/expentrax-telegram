@@ -35,6 +35,11 @@ def get_transaction_handler(command: str):
 
 # Function to register all handler
 def register_handler(application):
+    """Take the application argument and register all handler
+
+    Args:
+        application (ApplicationBuilder): An application builder object
+    """
 
     # Basic commands
     application.add_handler(CommandHandler("start", start_command))

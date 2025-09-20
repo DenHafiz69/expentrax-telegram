@@ -2,6 +2,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Return a start message to the user"""
     message = (
         "👋 *Welcome to Expense Tracker Bot!*\n\n"
         "I can help you track your spending, set budgets, and generate reports.\n\n"
