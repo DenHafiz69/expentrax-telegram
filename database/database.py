@@ -212,6 +212,55 @@ def get_all_user_chat_ids():
         # .all() returns a list of tuples, so we extract the first element
         return [chat_id[0] for chat_id in user_chat_ids]
 
+def get_transaction_by_id(transaction_id: int, chat_id: int):
+    """Gets a specific transaction by ID for the given user."""
+    session = Session()
+    transaction = (
+        session.query(Transaction)
+        .filter_by(id=transaction_id, chat_id=chat_id)
+        .first()
+    )
+    session.close()
+    return transaction
+
+def update_transaction(transaction_id: int, chat_id: int, **kwargs):
+    """Updates a transaction with the provided fields."""
+    session = Session()
+    transaction = (
+        session.query(Transaction)
+        .filter_by(id=transaction_id, chat_id=chat_id)
+        .first()
+    )
+    
+    if transaction:
+        for key, value in kwargs.items():
+            if hasattr(transaction, key):
+                setattr(transaction, key, value)
+        session.commit()
+        session.close()
+        return True
+    
+    session.close()
+    return False
+
+def delete_transaction(transaction_id: int, chat_id: int):
+    """Deletes a transaction by ID for the given user."""
+    session = Session()
+    transaction = (
+        session.query(Transaction)
+        .filter_by(id=transaction_id, chat_id=chat_id)
+        .first()
+    )
+    
+    if transaction:
+        session.delete(transaction)
+        session.commit()
+        session.close()
+        return True
+    
+    session.close()
+    return False
+
 # Create the table
 def init_db():
     Base.metadata.create_all(bind=engine)

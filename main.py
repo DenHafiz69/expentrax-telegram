@@ -66,8 +66,15 @@ def register_handler(application):
             search.GET_QUERY: [MessageHandler(filters.TEXT & ~filters.COMMAND, search.process_search_query)],
             search.PAGINATE: [
                 CallbackQueryHandler(search.paginate_search, pattern="^search_page_"),
-                CallbackQueryHandler(search.close_search, pattern="^search_close$")
-            ]
+                CallbackQueryHandler(search.close_search, pattern="^search_close$"),
+                CallbackQueryHandler(search.start_edit, pattern="^edit_")
+            ],
+            search.EDIT_CHOICE: [
+                CallbackQueryHandler(search.handle_edit_choice, pattern="^edit_field_|^edit_save$|^edit_cancel$")
+            ],
+            search.EDIT_DESCRIPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, search.edit_description)],
+            search.EDIT_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, search.edit_amount)],
+            search.EDIT_CATEGORY: [MessageHandler(filters.TEXT & ~filters.COMMAND, search.edit_category)]
         },
         fallbacks=[CommandHandler("cancel", search.cancel)],
         allow_reentry=True
