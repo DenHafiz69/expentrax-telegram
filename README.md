@@ -6,11 +6,11 @@ This project is a complete rewrite of my previous Telegram bot, Expentrax. The g
 
 This checklist outlines the essential features required for a minimum viable product.
 
-- [ ] **User Management**: The bot can uniquely identify and manage individual users.
+- [x] **User Management**: The bot can uniquely identify and manage individual users.
 
     - [x] Implemented a database schema to store user information.
 
-    - [ ] Handled user authentication and data persistence.
+    - [x] Handled user authentication and data persistence.
 
 - [ ] **Transaction Logging**: The bot can parse and record expense messages.
 
