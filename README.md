@@ -40,6 +40,16 @@ This checklist covers additional features to enhance the bot's functionality and
 
     - [ ] Developed commands to add, edit, and delete categories.
 
+- [ ] Budgeting: Users can set and track budgets for different categories.
+
+    - [ ] Created a dedicated database table for budgets, linked to users and categories.
+
+    - [ ] Implemented a command for users to set a budget (e.g., /set_budget groceries 500).
+
+    - [ ] The bot provides a summary of spending against the budget.
+
+    - [ ] The bot can alert the user when they are nearing their budget limit.
+
 - [ ] Visual Reporting: The bot provides visual summaries of spending.
 
     - [ ] Integrated a plotting library (e.g., Matplotlib) to create charts.
