@@ -3,7 +3,8 @@ from dotenv import load_dotenv
 import os
 import logging
 
-from utils.database import init_db, save_user, save_transaction
+from utils.database import init_db
+from handlers.start import start_command
 
 from telegram import Update
 from telegram.ext import filters, ApplicationBuilder, ContextTypes, CommandHandler
@@ -18,24 +19,6 @@ load_dotenv()
 
 # Access environment variables
 BOT_TOKEN = os.getenv('TELEGRAM_API')
-
-async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    message = (
-        "Hi"
-    )
-    
-    save_user(
-        chat_id=update.effective_chat.id,
-        username=update.effective_chat.username
-    )
-    
-    # If new user, record the telegram id and username into the user table
-
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text=message
-    )
 
 def main() -> None:
     application = ApplicationBuilder().token(BOT_TOKEN).build()
