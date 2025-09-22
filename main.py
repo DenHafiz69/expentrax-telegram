@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 import os
 import logging
 
-from database import init_db, save_user, save_transaction
+from utils.database import init_db, save_user, save_transaction
 
 from telegram import Update
 from telegram.ext import filters, ApplicationBuilder, ContextTypes, CommandHandler
