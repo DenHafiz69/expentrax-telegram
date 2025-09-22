@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker
 # logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
 # Setup
-engine = create_engine("sqlite:///expentrax.db")
+engine = create_engine("sqlite:///data/expentrax.db")
 Base = declarative_base()
 Session = sessionmaker(bind=engine)
 
