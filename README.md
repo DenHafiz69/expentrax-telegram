@@ -63,3 +63,6 @@ This checklist covers additional features to enhance the bot's functionality and
     - [ ] Developed a scheduling mechanism to automatically add recurring expenses to the database.
 
 This checklist will serve as a clear roadmap for my development process and provide a great overview for anyone looking at this project.
+
+> [!NOTE]  
+> This README is generated using Google Gemini
