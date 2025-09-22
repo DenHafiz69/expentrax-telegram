@@ -55,6 +55,12 @@ def save_transaction(user_id, amount, category, description, date):
     session.commit()
     session.close()
     
+def read_user(chat_id):
+    session = Session()
+    user = session.query(User).filter_by(chat_id=chat_id).first()
+    session.close()
+    return user
+    
     
 # Create the table
 def init_db():
