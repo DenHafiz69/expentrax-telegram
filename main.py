@@ -3,6 +3,8 @@ from dotenv import load_dotenv
 import os
 import logging
 
+from database import init_db, save_user, save_transaction
+
 from telegram import Update
 from telegram.ext import filters, ApplicationBuilder, ContextTypes, CommandHandler
 
@@ -23,6 +25,11 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Hi"
     )
     
+    save_user(
+        chat_id=update.effective_chat.id,
+        username=update.effective_chat.username
+    )
+    
     # If new user, record the telegram id and username into the user table
 
     await context.bot.send_message(
@@ -38,4 +45,5 @@ def main() -> None:
 
 
 if __name__ == '__main__':
+    init_db()
     main()

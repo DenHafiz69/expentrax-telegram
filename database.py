@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker
 # logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
 # Setup
-engine = create_engine()
+engine = create_engine("sqlite:///expentrax.db")
 Base = declarative_base()
 Session = sessionmaker(bind=engine)
 
@@ -28,3 +28,34 @@ class Transactions(Base):
     category = Column(String)
     description = Column(String)
     date = Column(DateTime)
+    
+# Create tables
+Base.metadata.create_all(engine)
+    
+def save_user(chat_id, username):
+    session = Session()
+    user = User(
+        chat_id=chat_id, 
+        username=username
+    )
+    session.add(user)
+    session.commit()
+    session.close()
+    
+def save_transaction(user_id, amount, category, description, date):
+    session = Session()
+    transaction = Transactions(
+        user_id=user_id, 
+        amount=amount, 
+        category=category, 
+        description=description, 
+        date=date
+    )
+    session.add(transaction)
+    session.commit()
+    session.close()
+    
+    
+# Create the table
+def init_db():
+    Base.metadata.create_all(bind=engine)
