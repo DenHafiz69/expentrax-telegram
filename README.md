@@ -8,7 +8,7 @@ This checklist outlines the essential features required for a minimum viable pro
 
 - [ ] **User Management**: The bot can uniquely identify and manage individual users.
 
-    - [x] Implemented a database schema to store users and transactions information.
+    - [x] Implemented a database schema to store user information.
 
     - [ ] Handled user authentication and data persistence.
 
