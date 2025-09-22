@@ -18,7 +18,7 @@ logging.basicConfig(
 load_dotenv()
 
 # Access environment variables
-BOT_TOKEN = os.getenv('TELEGRAM_API')
+BOT_TOKEN = os.getenv('BOT_TOKEN')
 
 def main() -> None:
     application = ApplicationBuilder().token(BOT_TOKEN).build()
