@@ -22,22 +22,14 @@ logger = logging.getLogger(__name__)
 # Set the default categories for income and expense
 
 EXPENSE_CATEGORIES = [
-    'Food',
-    'Groceries',
-    'Utilities',
-    'Health/Medical',
-    'Transport',
-    'Savings',
-    'Debt',
-    'Personal',
-    'Other'
+    ['Food', 'Groceries', 'Utilities'],
+    ['Health/Medical', 'Transport', 'Savings'],
+    ['Debt', 'Personal', 'Other']
 ]
 
 INCOME_CATEGORIES = [
-    'Paycheck',
-    'Savings',
-    'Investment',
-    'Other'
+    ['Paycheck', 'Savings', 'Freelance'],
+    ['Investment', 'Other']
 ]
 
 # Conversation states
@@ -65,18 +57,70 @@ async def type_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     user = update.message.from_user
     
     # Store transaction type in temporary dictionary
-    context.user_data['transaction_type'] = update.message.text
+    context.user_data['type'] = update.message.text
     
-    logger.info("Transaction type: %s, User: %s", context.user_data['transaction_type'], user.first_name)
+    logger.info("Transaction type: %s, User: %s", context.user_data['type'], user.first_name)
     await update.message.reply_text(
-        "I see! Please provide the amount of the transaction.",
+        "Please provide the amount of the transaction.",
         reply_markup=ReplyKeyboardRemove()
     )
     
     return AMOUNT
 
-# async def amount_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-#     """Take the amount of transaction and ask for description"""
+async def amount_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Take the amount of transaction and ask for description"""
+    user = update.message.from_user
     
+    # Store transaction amount in temporary dictionary
+    context.user_data['amount'] = update.message.text
+    
+    logger.info("Transaction amount: %s, User: %s", context.user_data['amount'], user.first_name)
+    await update.message.reply_text(
+        "Please provide a description of the transaction."
+    )
+    
+    return DESCRIPTION
 
+async def description_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Take the description of transaction and ask for category"""
+    user = update.message.from_user
+    
+    # Store transaction description in temporary dictionary
+    context.user_data['description'] = update.message.text
+    
+    logger.info("Description: %s, User: %s", context.user_data['description'], user.first_name)
+    
+    if context.user_data['type'] == "Income":
+        reply_keyboard = INCOME_CATEGORIES
+    else:
+        reply_keyboard = EXPENSE_CATEGORIES
+    
+    await update.message.reply_text(
+        "Please provide a category for the transaction.",
+        reply_markup=ReplyKeyboardMarkup(
+            reply_keyboard, 
+            resize_keyboard=True, 
+            one_time_keyboard=True
+        ),
+    )
+    
+    return CATEGORY
+
+async def category_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Take the category of transaction and save the transaction"""
+    user = update.message.from_user
+        
+    logger.info("Transaction description: %s, User: %s", context.user_data['description'], user.first_name)
+    
+    # Store transaction category in temporary dictionary
+    context.user_data['category'] = update.message.text
+    
+    logger.info("Transaction category: %s, User: %s", context.user_data['category'], user.first_name)
+    await update.message.reply_text(
+        "Transaction saved successfully!",
+        reply_markup=ReplyKeyboardRemove()
+    )
+    
+    # Save transaction to database
+    
     

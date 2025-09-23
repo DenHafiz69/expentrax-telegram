@@ -5,9 +5,10 @@ import logging
 
 from utils.database import init_db
 from handlers.start import start_command
-from handlers.transaction import start_transaction
+from handlers.transaction import start_transaction, type_handler, amount_handler, description_handler, category_handler
 
-from telegram.ext import filters, ApplicationBuilder, ContextTypes, CommandHandler, ConversationHandler
+
+from telegram.ext import filters, ApplicationBuilder, ContextTypes, CommandHandler, ConversationHandler, MessageHandler
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -33,10 +34,10 @@ def main() -> None:
     transaction_handler = ConversationHandler(
         entry_points=[CommandHandler("transaction", start_transaction)],
         states={
-            TYPE: [],
-            AMOUNT: [],
-            DESCRIPTION: [],
-            CATEGORY: []
+            TYPE: [MessageHandler(filters.Regex('^(Income|Expense)$'), type_handler)],
+            AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, amount_handler)],
+            DESCRIPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, description_handler)],
+            CATEGORY: [MessageHandler(filters.TEXT & ~filters.COMMAND, category_handler)]
         },
         fallbacks=[]
     )
