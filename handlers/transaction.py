@@ -136,3 +136,14 @@ async def category_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     
     # End the conversation
     return ConversationHandler.END
+
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Cancels and ends the conversation."""
+    user = update.message.from_user
+    logger.info("User %s canceled the conversation.", user.first_name)
+
+    await update.message.reply_text(
+        "Transaction cancelled.", reply_markup=ReplyKeyboardRemove()
+    )
+
+    return ConversationHandler.END

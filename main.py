@@ -5,8 +5,8 @@ import logging
 
 from utils.database import init_db
 from handlers.start import start_command
-from handlers.transaction import start_transaction, type_handler, amount_handler, description_handler, category_handler
-
+from handlers.transaction import start_transaction, type_handler, amount_handler, description_handler, category_handler, cancel_transaction
+from handlers.history import start_history, recent_handler, weekly_handler, monthly_handler, cancel_history
 
 from telegram.ext import filters, ApplicationBuilder, ContextTypes, CommandHandler, ConversationHandler, MessageHandler
 
@@ -41,6 +41,7 @@ def main() -> None:
             DESCRIPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, description_handler)],
             CATEGORY: [MessageHandler(filters.TEXT & ~filters.COMMAND, category_handler)]
         },
+        fallbacks=[CommandHandler("cancel", cancel_transaction)],
     )
     
     history_handler = ConversationHandler(
@@ -50,6 +51,7 @@ def main() -> None:
             WEEKLY: [MessageHandler(filters.TEXT & ~filters.COMMAND, weekly_handler)],
             MONTHLY: [MessageHandler(filters.TEXT & ~filters.COMMAND, monthly_handler)]
         },
+        fallbacks=[CommandHandler("cancel", cancel_history)],
     )
     
     application.add_handler(transaction_handler)
