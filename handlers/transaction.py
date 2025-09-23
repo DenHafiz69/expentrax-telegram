@@ -45,7 +45,6 @@ async def start_transaction(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             one_time_keyboard=True, 
             input_field_placeholder="Add 'Income' or 'Expense'"
         ),
-        fallbacks=[CommandHandler("cancel", cancel_transaction)],
     )
     
     return TYPE
