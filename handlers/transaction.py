@@ -51,7 +51,6 @@ async def start_transaction(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     
     return TYPE
     
-    
 async def type_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Take the state and ask for amount of transaction"""
     user = update.message.from_user
@@ -130,8 +129,12 @@ async def category_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     
     logger.info("Transaction category: %s, User: %s", context.user_data['category'], user.first_name)
     await update.message.reply_text(
-        "Transaction saved successfully!",
-        reply_markup=ReplyKeyboardRemove()
+        f"✅ {context.user_data['type']} added:\n\n"
+        f"Description: {context.user_data['description']}\n"
+        f"Amount: {context.user_data['amount']}\n"
+        f"Category: {context.user_data['category']}\n",
+        reply_markup=ReplyKeyboardRemove(),
+        parse_mode="Markdown"
     )
     
     # End the conversation
