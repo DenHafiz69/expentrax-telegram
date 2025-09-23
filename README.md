@@ -75,6 +75,7 @@ This checklist will serve as a clear roadmap for my development process and prov
 ```bash
 git clone https://github.com/DenHafiz69/expentrax.git
 cd expentrax
+git checkout no-ai-rewrite
 ```
 
 ### 2. Create virtual environment
