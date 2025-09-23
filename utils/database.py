@@ -31,7 +31,7 @@ class Transactions(Base):
     
 # Create tables
 Base.metadata.create_all(engine)
-    
+
 def save_user(chat_id, username):
     session = Session()
     user = User(
@@ -60,7 +60,12 @@ def read_user(chat_id):
     user = session.query(User).filter_by(chat_id=chat_id).first()
     session.close()
     return user
-    
+
+def read_transactions(user_id):
+    session = Session()
+    transactions = session.query(Transactions).filter_by(user_id=user_id).all()
+    session.close()
+    return transactions
     
 # Create the table
 def init_db():
