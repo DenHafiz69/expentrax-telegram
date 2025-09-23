@@ -13,9 +13,11 @@ This checklist outlines the essential features required for a minimum viable pro
     - [x] Handled user authentication and data persistence.
 
 - [ ] **Transaction Logging**: The bot can parse and record expense messages.
+    
+    - [ ] Implemented custom keyboards for quick access to commands.
 
-    - [ ] Developed a robust string parsing function to extract amount, category, and description.
-
+    - [ ] Added inline buttons for more dynamic interactions.
+    
     - [ ] Integrated with a database to save transaction data.
 
 - [ ] **Data Retrieval**: The bot can provide basic expense summaries.
@@ -27,12 +29,6 @@ This checklist outlines the essential features required for a minimum viable pro
 ## ✨ "Wow" Factors
 
 This checklist covers additional features to enhance the bot's functionality and demonstrate advanced skills.
-
-- [ ] Interactive User Interface: The bot uses interactive elements.
-
-    - [ ] Implemented custom keyboards for quick access to commands.
-
-    - [ ] Added inline buttons for more dynamic interactions.
 
 - [ ] Custom Category Management: Users can manage their own expense categories.
 
