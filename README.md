@@ -21,9 +21,9 @@ This checklist outlines the essential features required for a minimum viable pro
     
     - [ ] Implemented custom keyboards for quick access to commands.
 
-    - [ ] Added inline buttons for more dynamic interactions.
+    - [x] Added inline buttons for more dynamic interactions.
 
-    - [ ] Integrated with a database to save transaction data.
+    - [x] Integrated with a database to save transaction data.
 
 - [ ] **Data Retrieval**: The bot can provide basic expense summaries.
 
