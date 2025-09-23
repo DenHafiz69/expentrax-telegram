@@ -21,8 +21,11 @@ load_dotenv()
 # Access environment variables
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 
-# Conversation states
+# Transaction states
 TYPE, AMOUNT, DESCRIPTION, CATEGORY = range(4)
+
+# History states
+RECENT, WEEKLY, MONTHLY = range(3)
 
 def main() -> None:
     application = ApplicationBuilder().token(BOT_TOKEN).build()
@@ -30,7 +33,6 @@ def main() -> None:
     # Start the application
     application.add_handler(CommandHandler("start", start_command))
     
-    # Conversation handler with states AMOUNT, DESCRIPTION, CATEGORY
     transaction_handler = ConversationHandler(
         entry_points=[CommandHandler("transaction", start_transaction)],
         states={
@@ -39,10 +41,19 @@ def main() -> None:
             DESCRIPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, description_handler)],
             CATEGORY: [MessageHandler(filters.TEXT & ~filters.COMMAND, category_handler)]
         },
-        fallbacks=[]
+    )
+    
+    history_handler = ConversationHandler(
+        entry_points=[CommandHandler("history", start_history)],
+        states={
+            RECENT: [MessageHandler(filters.TEXT & ~filters.COMMAND, recent_handler)],
+            WEEKLY: [MessageHandler(filters.TEXT & ~filters.COMMAND, weekly_handler)],
+            MONTHLY: [MessageHandler(filters.TEXT & ~filters.COMMAND, monthly_handler)]
+        },
     )
     
     application.add_handler(transaction_handler)
+    application.add_handler(history_handler)
     
     application.run_polling()
 
