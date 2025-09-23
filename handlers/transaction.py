@@ -133,8 +133,7 @@ async def category_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         f"Description: {context.user_data['description']}\n"
         f"Amount: {context.user_data['amount']}\n"
         f"Category: {context.user_data['category']}\n",
-        reply_markup=ReplyKeyboardRemove(),
-        parse_mode="Markdown"
+        reply_markup=ReplyKeyboardRemove()
     )
     
     # End the conversation
