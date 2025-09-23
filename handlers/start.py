@@ -14,8 +14,6 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = (
         "Hi"
     )
-    
-    # If new user, record the telegram id and username into the user table
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
