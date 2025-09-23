@@ -17,9 +17,9 @@ This checklist outlines the essential features required for a minimum viable pro
 
     - [x] Handled user authentication and data persistence.
 
-- [ ] **Transaction Logging**: The bot can parse and record expense messages.
+- [x] **Transaction Logging**: The bot can parse and record expense messages.
     
-    - [ ] Implemented custom keyboards for quick access to commands.
+    - [x] Implemented custom keyboards for quick access to commands.
 
     - [x] Added inline buttons for more dynamic interactions.
 
