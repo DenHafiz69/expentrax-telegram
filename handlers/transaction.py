@@ -58,8 +58,8 @@ async def type_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     
     # Store transaction type in temporary dictionary
     context.user_data['type'] = update.message.text
-    
     logger.info("Transaction type: %s, User: %s", context.user_data['type'], user.first_name)
+    
     await update.message.reply_text(
         "Please provide the amount of the transaction.",
         reply_markup=ReplyKeyboardRemove()
@@ -74,11 +74,12 @@ async def amount_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     # Store transaction amount in temporary dictionary
     context.user_data['amount'] = update.message.text
     
+    # Check if the currency is valid
     if not is_valid_currency(context.user_data['amount']):
-        update.message.reply_text(
+        await update.message.reply_text(
             "Invalid amount. Please provide a valid currency."
         )
-        return TYPE
+        return AMOUNT
     
     logger.info("Transaction amount: %s, User: %s", context.user_data['amount'], user.first_name)
     await update.message.reply_text(
@@ -92,9 +93,8 @@ async def description_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
     user = update.message.from_user
     
     # Store transaction description in temporary dictionary
-    context.user_data['description'] = update.message.text
-    
-    logger.info("Description: %s, User: %s", context.user_data['description'], user.first_name)
+    context.user_data['description'] = update.message.text        
+    logger.info("Transaction description: %s, User: %s", context.user_data['description'], user.first_name)
     
     if context.user_data['type'] == "Income":
         reply_keyboard = INCOME_CATEGORIES
@@ -115,8 +115,6 @@ async def description_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
 async def category_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Take the category of transaction and save the transaction"""
     user = update.message.from_user
-        
-    logger.info("Transaction description: %s, User: %s", context.user_data['description'], user.first_name)
     
     # Store transaction category in temporary dictionary
     context.user_data['category'] = update.message.text
