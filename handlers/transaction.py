@@ -6,8 +6,6 @@ from utils.validators import is_valid_currency
 
 import logging
 
-# Enable logging
-
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
@@ -47,6 +45,7 @@ async def start_transaction(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             one_time_keyboard=True, 
             input_field_placeholder="Add 'Income' or 'Expense'"
         ),
+        fallbacks=[CommandHandler("cancel", cancel_transaction)],
     )
     
     return TYPE
