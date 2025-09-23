@@ -1,5 +1,5 @@
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
-from telegram.ext import ContextTypes
+from telegram.ext import ContextTypes, ConversationHandler
 
 from utils.database import save_transaction
 from utils.validators import is_valid_currency
@@ -74,6 +74,12 @@ async def amount_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     # Store transaction amount in temporary dictionary
     context.user_data['amount'] = update.message.text
     
+    if not is_valid_currency(context.user_data['amount']):
+        update.message.reply_text(
+            "Invalid amount. Please provide a valid currency."
+        )
+        return TYPE
+    
     logger.info("Transaction amount: %s, User: %s", context.user_data['amount'], user.first_name)
     await update.message.reply_text(
         "Please provide a description of the transaction."
@@ -115,12 +121,6 @@ async def category_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     # Store transaction category in temporary dictionary
     context.user_data['category'] = update.message.text
     
-    logger.info("Transaction category: %s, User: %s", context.user_data['category'], user.first_name)
-    await update.message.reply_text(
-        "Transaction saved successfully!",
-        reply_markup=ReplyKeyboardRemove()
-    )
-    
     # Save transaction to database
     save_transaction(
         user_id=user.id,
@@ -129,3 +129,12 @@ async def category_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         description=context.user_data['description'],
         date=update.message.date
     )
+    
+    logger.info("Transaction category: %s, User: %s", context.user_data['category'], user.first_name)
+    await update.message.reply_text(
+        "Transaction saved successfully!",
+        reply_markup=ReplyKeyboardRemove()
+    )
+    
+    # End the conversation
+    return ConversationHandler.END
