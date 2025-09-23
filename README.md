@@ -2,6 +2,11 @@
 
 This project is a complete rewrite of my previous Telegram bot, Expentrax. The goal is to build it from scratch without the use of any AI tools, demonstrating a deeper understanding of the underlying concepts and code. This project is for CS50's final project.
 
+> [!NOTE]  
+> This README is generated using Google Gemini and ChatGPT
+
+---
+
 ## 🚧 Core Functionalities
 
 This checklist outlines the essential features required for a minimum viable product.
@@ -17,7 +22,7 @@ This checklist outlines the essential features required for a minimum viable pro
     - [ ] Implemented custom keyboards for quick access to commands.
 
     - [ ] Added inline buttons for more dynamic interactions.
-    
+
     - [ ] Integrated with a database to save transaction data.
 
 - [ ] **Data Retrieval**: The bot can provide basic expense summaries.
@@ -25,6 +30,8 @@ This checklist outlines the essential features required for a minimum viable pro
     - [ ] Implemented a command to list recent transactions.
 
     - [ ] Implemented a command to show total expenses for a specific period (e.g., this month).
+
+---
 
 ## ✨ "Wow" Factors
 
@@ -60,5 +67,36 @@ This checklist covers additional features to enhance the bot's functionality and
 
 This checklist will serve as a clear roadmap for my development process and provide a great overview for anyone looking at this project.
 
-> [!NOTE]  
-> This README is generated using Google Gemini
+---
+
+## 🚀 Setup Instructions
+
+### 1. Clone this repo
+```bash
+git clone https://github.com/DenHafiz69/expentrax.git
+cd expentrax
+```
+
+### 2. Create virtual environment
+```bash
+python3 -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+```
+
+### 3. Install dependencies
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Create `.env` file
+Create a `.env` file in the project root with your bot token:
+```
+BOT_TOKEN=your_telegram_bot_token
+```
+
+---
+
+## ▶️ Run the bot
+```bash
+python main.py
+```
