@@ -24,6 +24,7 @@ class Transactions(Base):
     __tablename__ = 'transactions'
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer)
+    type_of_transaction = Column(String)
     amount = Column(Float)
     category = Column(String)
     description = Column(String)
@@ -67,7 +68,6 @@ def get_recent_transactions(user_id, limit=3):
     transactions = (
         session.query(Transactions)
         .filter_by(user_id=user_id)
-        # .filter_by(type_of_transaction=type_of_transaction)
         .order_by(Transactions.date.desc())
         .limit(limit)
         .all()
