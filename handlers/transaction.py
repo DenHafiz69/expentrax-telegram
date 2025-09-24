@@ -38,7 +38,7 @@ async def start_transaction(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     reply_keyboard = [["Income", "Expense"]]
     
     await update.message.reply_text(
-        "What would you like to do?",
+        "What kind of transaction are we tracking today? 💰", # From Google Gemini
         reply_markup=ReplyKeyboardMarkup(
             reply_keyboard, 
             resize_keyboard=True, 
@@ -58,8 +58,10 @@ async def type_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     logger.info("Transaction type: %s, User: %s", context.user_data['type'], user.first_name)
     
     await update.message.reply_text(
-        "Please provide the amount of the transaction.",
-        reply_markup=ReplyKeyboardRemove()
+        "Got it! How much was this transaction?\n" # From Google Gemini
+        "_Please enter a number, e.g., `100` or `50.50`._",
+        reply_markup=ReplyKeyboardRemove(),
+        parse_mode='Markdown',
     )
     
     return AMOUNT
@@ -79,8 +81,11 @@ async def amount_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return AMOUNT
     
     logger.info("Transaction amount: %s, User: %s", context.user_data['amount'], user.first_name)
+    
     await update.message.reply_text(
-        "Please provide a description of the transaction."
+        f"Perfect! Now, give me a short description for this {context.user_data['type'].lower()}.\n" # From Google Gemini
+        "_E.g., 'Dinner with friends', 'Monthly internet bill'._",
+        parse_mode='Markdown'
     )
     
     return DESCRIPTION
@@ -99,12 +104,13 @@ async def description_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         reply_keyboard = EXPENSE_CATEGORIES
     
     await update.message.reply_text(
-        "Please provide a category for the transaction.",
+        f"Great! Which category best describes this {context.user_data['type'].lower()}? 👇",
         reply_markup=ReplyKeyboardMarkup(
             reply_keyboard, 
             resize_keyboard=True, 
             one_time_keyboard=True
         ),
+        parse_mode='Markdown'
     )
     
     return CATEGORY
@@ -129,7 +135,7 @@ async def category_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     await update.message.reply_text(
         f"✅ {context.user_data['type']} added:\n\n"
         f"Description: {context.user_data['description']}\n"
-        f"Amount: {context.user_data['amount']}\n"
+        f"Amount: RM {context.user_data['amount']}\n"
         f"Category: {context.user_data['category']}\n",
         reply_markup=ReplyKeyboardRemove()
     )
@@ -137,7 +143,7 @@ async def category_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     # End the conversation
     return ConversationHandler.END
 
-async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def cancel_transaction(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Cancels and ends the conversation."""
     user = update.message.from_user
     logger.info("User %s canceled the conversation.", user.first_name)
