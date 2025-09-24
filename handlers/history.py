@@ -1,3 +1,4 @@
+from httpx import get
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ContextTypes, ConversationHandler
 
@@ -16,7 +17,7 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 # Conversation states
-RECENT, WEEKLY, MONTHLY = range(3)
+CHOICE, RECENT, WEEKLY, MONTHLY = range(4)
 
 # Start the history conversation
 async def start_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -32,22 +33,54 @@ async def start_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         ),
     )
     
-    if update.message.text == "Recent":
+    return CHOICE
+
+
+async def history_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Process the user's selection for history type"""
+    user = update.message.from_user
+    choice = update.message.text
+    
+    if choice == "Recent":
         return RECENT
-    elif update.message.text == "Weekly":
+    elif choice == "Weekly":
         return WEEKLY
-    elif update.message.text == "Monthly":
+    elif choice == "Monthly":
         return MONTHLY
     else:
-        # 
-        return ConversationHandler.END
+        await update.message.reply_text("Invalid choice. Please select 'Recent', 'Weekly', or 'Monthly'.")
+        return CHOICE
     
 async def recent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Show recent transactions by the user"""
     user = update.message.from_user
     
+    print("test")
+    
     # Read the transactions from database
-    get_recent_transactions(user.id)
+    transactions = get_recent_transactions(user.id)
+    logger.info("Recent transactions: %s, User: %s", transactions, user.first_name)
+    
+    if not transactions:
+        await update.message.reply_text("No recent transactions found.")
+        return ConversationHandler.END
+    
+    message = "Here are your recent transactions:\n\n"
+    for transaction in transactions:
+        # Determine the prefix (color and type) based on transaction.type
+        # Google Gemini help with this part
+        # Learned about ternary operator (conditional expression)
+        type_prefix = "🟩 Income" if transaction.type_of_transaction == "income" else "🟥 Expense" 
+
+        message += (
+            f"{transaction.date.strftime('%Y-%m-%d')} | "  # Date
+            f"{type_prefix} | "                            # Income/Expense with emoji
+            f"RM {transaction.amount:.2f} | "              # Amount (formatted)
+            f"*{transaction.category}* | "                 # Category (bold for Markdown)
+            f"{transaction.description}\n"                 # Description
+        )
+        
+    await update.message.reply_text(message.strip(), parse_mode='Markdown')
     
     # Send recent transactions to the user
     
