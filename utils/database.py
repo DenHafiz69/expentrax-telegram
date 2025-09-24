@@ -42,10 +42,11 @@ def save_user(chat_id, username):
     session.commit()
     session.close()
     
-def save_transaction(user_id, amount, category, description, date):
+def save_transaction(user_id, type_of_transaction, amount, category, description, date):
     session = Session()
     transaction = Transactions(
-        user_id=user_id, 
+        user_id=user_id,
+        type_of_transaction=type_of_transaction,
         amount=amount, 
         category=category, 
         description=description, 
@@ -61,9 +62,17 @@ def read_user(chat_id):
     session.close()
     return user
 
-def read_transactions(user_id):
+def get_recent_transactions(user_id, type_of_transaction, limit=3):
     session = Session()
-    transactions = session.query(Transactions).filter_by(user_id=user_id).all()
+    transactions = (
+        session.query(Transactions)
+        .filter_by(user_id=user_id)
+        .filter_by(type_of_transaction=type_of_transaction)
+        .order_by(Transactions.date.desc())
+        .limit(limit)
+        .all()
+    )
+    
     session.close()
     return transactions
     
