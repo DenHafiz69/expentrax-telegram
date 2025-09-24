@@ -125,6 +125,7 @@ async def category_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     # Save transaction to database
     save_transaction(
         user_id=user.id,
+        type_of_transaction=context.user_data['type'],
         amount=context.user_data['amount'],
         category=context.user_data['category'],
         description=context.user_data['description'],
