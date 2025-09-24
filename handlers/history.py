@@ -1,9 +1,9 @@
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ContextTypes, ConversationHandler
 
-import logging
+from utils.database import get_recent_transactions
 
-from main import MONTHLY
+import logging
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
@@ -46,9 +46,8 @@ async def recent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     """Show recent transactions by the user"""
     user = update.message.from_user
     
-    number_of_transactions = 5
-    
     # Read the transactions from database
+    get_recent_transactions(user.id)
     
     # Send recent transactions to the user
     
@@ -76,10 +75,8 @@ async def monthly_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     user = update.message.from_user
     
     # reply_keyboard = show last three months but in spelling eg. September, August, July
-
-
     
-async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def cancel_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Cancels and ends the conversation."""
     user = update.message.from_user
     logger.info("User %s canceled the conversation.", user.first_name)

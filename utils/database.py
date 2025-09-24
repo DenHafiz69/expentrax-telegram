@@ -62,12 +62,12 @@ def read_user(chat_id):
     session.close()
     return user
 
-def get_recent_transactions(user_id, type_of_transaction, limit=3):
+def get_recent_transactions(user_id, limit=3):
     session = Session()
     transactions = (
         session.query(Transactions)
         .filter_by(user_id=user_id)
-        .filter_by(type_of_transaction=type_of_transaction)
+        # .filter_by(type_of_transaction=type_of_transaction)
         .order_by(Transactions.date.desc())
         .limit(limit)
         .all()
