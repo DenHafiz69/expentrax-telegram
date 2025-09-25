@@ -80,7 +80,12 @@ async def recent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             f"{transaction.description}\n"                 # Description
         )
         
-    await update.message.reply_text(message.strip(), parse_mode='Markdown')
+    await update.message.reply_text(
+        message.strip(), 
+        reply_markup=ReplyKeyboardRemove(), 
+        parse_mode='Markdown')
+    
+    return ConversationHandler.END
     
     # Send recent transactions to the user
     
