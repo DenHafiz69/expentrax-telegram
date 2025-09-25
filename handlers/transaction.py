@@ -136,10 +136,12 @@ async def category_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     await update.message.reply_text(
         f"✅ {context.user_data['type']} added:\n\n"
         f"Description: {context.user_data['description']}\n"
-        f"Amount: RM {context.user_data['amount']}\n"
+        f"Amount: RM {context.user_data['amount']:.2f}\n"
         f"Category: {context.user_data['category']}\n",
         reply_markup=ReplyKeyboardRemove()
     )
+    
+    logger.info("Transaction saved to database: %s, User: %s", context.user_data, user.first_name)
     
     # End the conversation
     return ConversationHandler.END
