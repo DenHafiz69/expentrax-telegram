@@ -1,7 +1,9 @@
-from httpx import get
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ContextTypes, ConversationHandler
 
+from datetime import datetime, timedelta
+
+from handlers import start
 from utils.database import get_recent_transactions
 
 import logging
@@ -21,7 +23,7 @@ CHOICE, RECENT, WEEKLY, MONTHLY = range(4)
 
 # Start the history conversation
 async def start_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    reply_keyboard = [["Recent", "Weekly", "Monthly"]]
+    reply_keyboard = [["Recent", "Summary"]]
     
     await update.message.reply_text(
         "What would you like to do?",
@@ -48,14 +50,15 @@ async def history_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     elif choice == "Monthly":
         return MONTHLY
     else:
-        await update.message.reply_text("Invalid choice. Please select 'Recent', 'Weekly', or 'Monthly'.")
+        await update.message.reply_text(
+            "Invalid choice. Please select 'Recent' or 'Summary'.\n"
+            "Weekly and Monthly would be summaries instead of individual transaction."
+            )
         return CHOICE
     
 async def recent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Show recent transactions by the user"""
     user = update.message.from_user
-    
-    print("test")
     
     # Read the transactions from database
     transactions = get_recent_transactions(user.id)
@@ -86,34 +89,8 @@ async def recent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         parse_mode='Markdown')
     
     return ConversationHandler.END
-    
-    # Send recent transactions to the user
-    
 
-async def weekly_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Show weekly transactions by the user"""
-    user = update.message.from_user
-    
-    reply_keyboard = [["This week", "Last week", "Last two weeks"]]
-    
-    await update.message.reply_text(
-        "Which week would you like to see?",
-        reply_markup=ReplyKeyboardMarkup(
-            reply_keyboard, 
-            resize_keyboard=True, 
-            one_time_keyboard=True
-        ),
-    )
-    
-    # Read the transactions needed from the database
-    
-    
-async def monthly_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Show monthly transactions by the user"""
-    user = update.message.from_user
-    
-    # reply_keyboard = show last three months but in spelling eg. September, August, July
-    
+   
 async def cancel_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Cancels and ends the conversation."""
     user = update.message.from_user
