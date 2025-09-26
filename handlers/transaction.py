@@ -129,7 +129,7 @@ async def category_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         amount=context.user_data['amount'],
         category=context.user_data['category'],
         description=context.user_data['description'],
-        date=update.message.date
+        timestamp=update.message.date
     )
     
     logger.info("Transaction category: %s, User: %s", context.user_data['category'], user.first_name)
