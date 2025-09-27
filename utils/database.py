@@ -1,6 +1,8 @@
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from datetime import datetime
+from typing import Optional
+from sqlalchemy import create_engine, String, Text, select, ForeignKey, extract, desc
+from sqlalchemy.orm import DeclarativeBase, Session, mapped_column, Mapped, relationship
+
 
 # Uncomment to enable SQLAlchemy logging
 # import logging
@@ -9,26 +11,32 @@ from sqlalchemy.orm import sessionmaker
 
 # Setup
 engine = create_engine("sqlite:///data/expentrax.db")
-Base = declarative_base()
-Session = sessionmaker(bind=engine)
+
+class Base(DeclarativeBase):
+    pass
+
 
 # User table
 class User(Base):
     __tablename__ = 'users'
-    id = Column(Integer, primary_key=True)
-    chat_id = Column(Integer, unique=True)
-    username = Column(String)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    chat_id: Mapped[int] = mapped_column(unique=True)
+    username: Mapped[str]
+    
+    transactions: Mapped[list["Transaction"]] = relationship(back_populates="user")
     
 # Transaction table
-class Transactions(Base):
+class Transaction(Base):
     __tablename__ = 'transactions'
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer)
-    type_of_transaction = Column(String)
-    amount = Column(Float)
-    category = Column(String)
-    description = Column(String)
-    date = Column(DateTime)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    type_of_transaction: Mapped[str]
+    amount: Mapped[float]
+    category: Mapped[str]
+    description: Mapped[str]
+    timestamp: Mapped[datetime]
+    
+    user: Mapped["User"] = relationship(back_populates="transactions")
     
 # Create tables
 Base.metadata.create_all(engine)
@@ -43,9 +51,9 @@ def save_user(chat_id, username):
     session.commit()
     session.close()
     
-def save_transaction(user_id, type_of_transaction, amount, category, description, date):
+def save_transaction(user_id: int, type_of_transaction: str, amount: float, category: str, description: str, date: datetime):
     session = Session()
-    transaction = Transactions(
+    transaction = Transaction(
         user_id=user_id,
         type_of_transaction=type_of_transaction,
         amount=amount, 
@@ -63,18 +71,42 @@ def read_user(chat_id):
     session.close()
     return user
 
-def get_recent_transactions(user_id, limit=3):
+def get_recent_transactions(user_id: int, limit=3):
     session = Session()
     transactions = (
-        session.query(Transactions)
+        session.query(Transaction)
         .filter_by(user_id=user_id)
-        .order_by(Transactions.date.desc())
+        .order_by(Transaction.date.desc())
         .limit(limit)
         .all()
     )
     
     session.close()
     return transactions
+
+def get_summary_periods(chat_id: int, period: str):
+    with Session() as session:
+        query = session.query(Transaction.timestamp).filter(Transaction.chat_id == chat_id)
+
+        if period == "yearly":
+            years = query.distinct(extract("year", Transaction.timestamp)).all()
+            return sorted({str(d.strftime('%Y')) for d in years}, reverse=True)
+
+        elif period == "monthly":
+            months = query.distinct(
+                extract("year", Transaction.timestamp),
+                extract("month", Transaction.timestamp)
+            ).all()
+            return sorted({f"{str(d.strftime('%B %Y'))}" for d in months}, reverse=True)
+        
+        elif period == "weekly":
+            weeks = query.distinct(
+                extract("week", Transaction.timestamp),
+                extract("year", Transaction.timestamp)
+            ).order_by(desc("year"), desc("week")).limit(3).all()
+
+            return sorted({f"{str(d.strftime('%B %Y'))}" for d in weeks}, reverse=True)
+
     
 # Create the table
 def init_db():
