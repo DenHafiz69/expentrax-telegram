@@ -126,7 +126,7 @@ async def category_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     save_transaction(
         user_id=user.id,
         type_of_transaction=context.user_data['type'].lower(),
-        amount=context.user_data['amount'],
+        amount=float(context.user_data['amount']),
         category=context.user_data['category'],
         description=context.user_data['description'],
         timestamp=update.message.date
@@ -136,7 +136,7 @@ async def category_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     await update.message.reply_text(
         f"✅ {context.user_data['type']} added:\n\n"
         f"Description: {context.user_data['description']}\n"
-        f"Amount: RM {context.user_data['amount']:.2f}\n"
+        f"Amount: RM {float(context.user_data['amount']):.2f}\n"
         f"Category: {context.user_data['category']}\n",
         reply_markup=ReplyKeyboardRemove()
     )
