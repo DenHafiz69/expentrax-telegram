@@ -27,7 +27,7 @@ This checklist outlines the essential features required for a minimum viable pro
 
 - [ ] **Data Retrieval**: The bot can provide basic expense summaries.
 
-    - [ ] Implemented a command to list recent transactions.
+    - [x] Implemented a command to list recent transactions.
 
     - [ ] Implemented a command to show total expenses for a specific period (e.g., this month).
 

@@ -1,7 +1,7 @@
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ContextTypes, ConversationHandler
 
-from utils.database import save_transaction
+from utils.database import save_transaction, read_user
 from utils.validators import is_valid_currency
 
 import logging
@@ -124,7 +124,7 @@ async def category_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     
     # Save transaction to database
     save_transaction(
-        user_id=user.id,
+        user_id=read_user(update.effective_chat.id).id,
         type_of_transaction=context.user_data['type'].lower(),
         amount=float(context.user_data['amount']),
         category=context.user_data['category'],

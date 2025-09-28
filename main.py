@@ -6,7 +6,7 @@ import logging
 from utils.database import init_db
 from handlers.start import start_command
 from handlers.transaction import start_transaction, type_handler, amount_handler, description_handler, category_handler, cancel_transaction
-from handlers.history import start_history, recent_handler, weekly_handler, monthly_handler, cancel_history
+from handlers.history import summary_handler, start_history, history_choice, cancel_history
 
 from telegram.ext import filters, ApplicationBuilder, ContextTypes, CommandHandler, ConversationHandler, MessageHandler
 
@@ -25,7 +25,7 @@ BOT_TOKEN = os.getenv('BOT_TOKEN')
 TYPE, AMOUNT, DESCRIPTION, CATEGORY = range(4)
 
 # History states
-RECENT, WEEKLY, MONTHLY = range(3)
+CHOICE, SUMMARY = range(2)
 
 def main() -> None:
     application = ApplicationBuilder().token(BOT_TOKEN).build()
@@ -47,9 +47,8 @@ def main() -> None:
     history_handler = ConversationHandler(
         entry_points=[CommandHandler("history", start_history)],
         states={
-            RECENT: [MessageHandler(filters.TEXT & ~filters.COMMAND, recent_handler)],
-            WEEKLY: [MessageHandler(filters.TEXT & ~filters.COMMAND, weekly_handler)],
-            MONTHLY: [MessageHandler(filters.TEXT & ~filters.COMMAND, monthly_handler)]
+            CHOICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, history_choice)],
+            SUMMARY: [MessageHandler(filters.TEXT & ~filters.COMMAND, summary_handler)],
         },
         fallbacks=[CommandHandler("cancel", cancel_history)],
     )
