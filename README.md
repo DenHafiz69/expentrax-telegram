@@ -25,11 +25,11 @@ This checklist outlines the essential features required for a minimum viable pro
 
     - [x] Integrated with a database to save transaction data.
 
-- [ ] **Data Retrieval**: The bot can provide basic expense summaries.
+- [x] **Data Retrieval**: The bot can provide basic expense summaries.
 
     - [x] Implemented a command to list recent transactions.
 
-    - [ ] Implemented a command to show total expenses for a specific period (e.g., this month).
+    - [x] Implemented a command to show total expenses for a specific period (e.g., this month).
 
 ---
 
