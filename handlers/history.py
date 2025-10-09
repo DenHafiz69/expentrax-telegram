@@ -1,10 +1,7 @@
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ContextTypes, ConversationHandler
 
-from datetime import datetime, timedelta
-
-from handlers import start
-from utils.database import get_recent_transactions, get_summary_periods, read_user
+from utils.database import get_recent_transactions, get_summary_periods, get_weekly_average, read_user
 
 import logging
 
@@ -19,7 +16,7 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 # Conversation states
-CHOICE, SUMMARY = range(2)
+CHOICE, SUMMARY, WEEKLY, MONTHLY, YEARLY = range(5)
 
 # Start the history conversation
 async def start_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -51,15 +48,15 @@ async def history_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return await recent_handler(update, context)
     
     elif choice == "Summary":
-        reply_keyboard = [["Weekly", "Monthly"]]
+        reply_keyboard = [["Weekly", "Monthly", "Yearly"]]
         
         await update.message.reply_text(
-            "Please specify a summary period either 'Weekly' or 'Monthly'.",
+            "Please specify a summary period either 'Weekly', 'Monthly', or 'Yearly'.",
             reply_markup=ReplyKeyboardMarkup(
                 reply_keyboard,
                 resize_keyboard=True,
                 one_time_keyboard=True,
-                input_field_placeholder="Add 'Weekly' or 'Monthly'"
+                input_field_placeholder="Add 'Weekly', 'Monthly', or 'Yearly'"
             )
         )
         
@@ -121,6 +118,15 @@ async def summary_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     # Read the transactions from database
     user_id = read_user(update.effective_chat.id).id
     periods = get_summary_periods(user_id, summary_choice.lower())
+    context.user_data['periods'] = periods
+    
+    # Specifying the keyboard markup for weekly, monthly, and yearly
+    row_size = 3
+    
+    reply_keyboard = [
+        periods[i:i + row_size]
+        for i in range(0, len(periods), row_size)
+    ]
     
     if not periods:
         await update.message.reply_text(
@@ -131,22 +137,74 @@ async def summary_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         return ConversationHandler.END
 
     elif summary_choice == "Weekly":
-        weekly_handler(update, context, periods, user)
-    elif summary_choice == "Monthly":
-        monthly_handler(update, context, periods, user)
-    else:
-        yearly_handler(update, context, periods, user)
         
+        await update.message.reply_text(
+            "Please choose the week that you want:",
+            reply_markup=ReplyKeyboardMarkup(
+                reply_keyboard,
+                one_time_keyboard=True,
+                resize_keyboard=True,
+                input_field_placeholder="Choose a week for the summary."
+            )
+        )
+        
+        return WEEKLY
+    
+    elif summary_choice == "Monthly":
+        
+        await update.message.reply_text(
+            "Please choose the month that you want:",
+            reply_markup=ReplyKeyboardMarkup(
+                reply_keyboard,
+                one_time_keyboard=True,
+                resize_keyboard=True,
+                input_field_placeholder="Choose a month for the summary."
+            )
+        )
+        
+        return MONTHLY
+    
+    else:
+        
+        await update.message.reply_text(
+            "Please choose the year that you want:",
+            reply_markup=ReplyKeyboardMarkup(
+                reply_keyboard,
+                one_time_keyboard=True,
+                resize_keyboard=True,
+                input_field_placeholder="Choose a year for the summary."
+            )
+        )
+        
+        return YEARLY
+
+async def weekly_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.message.from_user
+    user_id = read_user(update.effective_chat.id).id
+    periods = context.user_data['periods']
+    
+    user_choice = update.message.text.split(' ')
+    
+    year_choice, week_choice = user_choice[2], user_choice[1]
+    
+    week_average = get_weekly_average(user_id, year_choice, week_choice)
+    
+    logger.info("Weekly average: %s, User: %s", week_average, user.first_name)
+    
+    await update.message.reply_text(
+        f"Total income: RM {week_average.total_income:.2f}\n"
+        f"Total expense: RM {week_average.total_expense:.2f}",
+        reply_markup=ReplyKeyboardRemove(),
+    )
+    
     return ConversationHandler.END
 
-def weekly_handler(update: Update, context: ContextTypes.DEFAULT_TYPE, periods, user):
-    pass
 
-def monthly_handler(update: Update, context: ContextTypes.DEFAULT_TYPE, periods, user):
-    pass
+async def monthly_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    periods = context.user_data['periods']
 
-def yearly_handler(update: Update, context: ContextTypes.DEFAULT_TYPE, periods, user):
-    pass
+async def yearly_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    periods = context.user_data['periods']
    
 async def cancel_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Cancels and ends the conversation."""

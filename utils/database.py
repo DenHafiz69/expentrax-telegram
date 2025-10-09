@@ -1,7 +1,6 @@
-from ast import stmt
 from datetime import datetime
-from typing import Optional, List
-from sqlalchemy import create_engine, String, Float, DateTime, Text, select, ForeignKey, extract, desc
+from typing import List
+from sqlalchemy import create_engine, String, Float, DateTime, Text, select, ForeignKey, func, case, extract, and_
 from sqlalchemy.orm import DeclarativeBase, Session, mapped_column, Mapped, relationship
 
 
@@ -100,19 +99,63 @@ def get_recent_transactions(user_id: int, limit=3):
         return transactions
 
 def get_summary_periods(user_id: int, period: str):
+    
+    stmt = select(Transaction.timestamp).distinct().where(Transaction.user_id == user_id)
+    
     with Session(engine) as session:
-        
-        stmt = select(Transaction.timestamp).distinct().where(Transaction.user_id == user_id)
         distinct_timestamp = session.execute(stmt).scalars().all()
 
         if period == "yearly":
             return sorted({d.strftime('%Y') for d in distinct_timestamp}, reverse=True)
 
         elif period == "monthly":
-            return sorted({d.strftime('%B %Y') for d in distinct_timestamp}, reverse=True)
+            return sorted({d.strftime('%b %Y') for d in distinct_timestamp}, reverse=True)
         
         elif period == "weekly":
-            return sorted({d.strftime('%U %Y') for d in distinct_timestamp}, reverse=True)
+            return sorted({d.strftime('Week %U %Y') for d in distinct_timestamp}, reverse=True)
+        
+def get_weekly_average(user_id: int, target_year: int, target_week: int):
+    
+    income_amount = case(
+        (Transaction.type_of_transaction == "income", Transaction.amount),
+        else_ = 0
+    )
+    
+    expense_amount = case(
+        (Transaction.type_of_transaction == "expense", Transaction.amount),
+        else_ = 0
+    )
+    
+    stmt = select(
+        # The year and week number are selected for grouping/clarity
+        extract('year', Transaction.timestamp).label("year"),
+        extract('week', Transaction.timestamp).label("week"),
+        
+        # Calculate the average of the conditional income amounts
+        func.sum(income_amount).label("total_income"),
+        
+        # Calculate the average of the conditional expense amounts
+        func.sum(expense_amount).label("total_expense")
+    ).where(
+        # Filter for the specific user, year, and week
+        and_(
+            Transaction.user_id == user_id,
+            extract('year', Transaction.timestamp) == target_year,
+            extract('week', Transaction.timestamp) == target_week
+        )
+    ).group_by(
+        # Group by the year and week so aggregation (AVG) happens correctly
+        extract('year', Transaction.timestamp),
+        extract('week', Transaction.timestamp)
+    )
+    
+    with Session(engine) as session:
+        # Execute the statement and fetch the first (and only) result
+        result = session.execute(stmt).first()
+        
+        print(f"--- Here is the result: {result}")
+        
+        return result
 
     
 # Create the table
