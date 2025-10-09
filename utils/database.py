@@ -113,48 +113,72 @@ def get_summary_periods(user_id: int, period: str):
         
         elif period == "weekly":
             return sorted({d.strftime('Week %U %Y') for d in distinct_timestamp}, reverse=True)
-        
-def get_weekly_average(user_id: int, target_year: int, target_week: int):
     
+def get_period_total(user_id: int, period_type: str, target_year: int, target_month: int = None, target_week: int = None):
+    """
+    Calculates the total income and expense for a given user over a specified
+    period (week, month, or year).
+
+    Args:
+        user_id: The ID of the user.
+        period_type: The time period ('week', 'month', or 'year').
+        target_year: The target year (e.g., 2025).
+        target_month: The target month (1-12), required for 'month'.
+        target_week: The target week number, required for 'week'.
+    """
+    
+    # --- 1. Common Logic: Define income and expense cases ---
     income_amount = case(
         (Transaction.type_of_transaction == "income", Transaction.amount),
-        else_ = 0
+        else_=0
     )
     
     expense_amount = case(
         (Transaction.type_of_transaction == "expense", Transaction.amount),
-        else_ = 0
+        else_=0
     )
-    
+
+    # --- 2. Dynamic Query Building ---
+    # Start with the base select statement
     stmt = select(
-        # The year and week number are selected for grouping/clarity
         extract('year', Transaction.timestamp).label("year"),
-        extract('week', Transaction.timestamp).label("week"),
-        
-        # Calculate the average of the conditional income amounts
         func.sum(income_amount).label("total_income"),
-        
-        # Calculate the average of the conditional expense amounts
         func.sum(expense_amount).label("total_expense")
-    ).where(
-        # Filter for the specific user, year, and week
-        and_(
-            Transaction.user_id == user_id,
-            extract('year', Transaction.timestamp) == target_year,
-            extract('week', Transaction.timestamp) == target_week
-        )
-    ).group_by(
-        # Group by the year and week so aggregation (AVG) happens correctly
-        extract('year', Transaction.timestamp),
-        extract('week', Transaction.timestamp)
     )
-    
+
+    # Base where and group_by clauses
+    where_conditions = [
+        Transaction.user_id == user_id,
+        extract('year', Transaction.timestamp) == target_year
+    ]
+    group_by_columns = [extract('year', Transaction.timestamp)]
+
+    # Dynamically add clauses based on the period_type
+    if period_type == 'month':
+        if not target_month:
+            raise ValueError("target_month is required for 'month' period type")
+        # Add month extraction to select, where, and group_by
+        stmt = stmt.add_columns(extract('month', Transaction.timestamp).label("month"))
+        where_conditions.append(extract('month', Transaction.timestamp) == target_month)
+        group_by_columns.append(extract('month', Transaction.timestamp))
+
+    elif period_type == 'week':
+        if not target_week:
+            raise ValueError("target_week is required for 'week' period type")
+        # Add week extraction to select, where, and group_by
+        stmt = stmt.add_columns(extract('week', Transaction.timestamp).label("week"))
+        where_conditions.append(extract('week', Transaction.timestamp) == target_week)
+        group_by_columns.append(extract('week', Transaction.timestamp))
+
+    elif period_type != 'year':
+        raise ValueError("Invalid period_type. Choose from 'week', 'month', or 'year'.")
+
+    # Finalize the statement with the dynamic clauses
+    stmt = stmt.where(and_(*where_conditions)).group_by(*group_by_columns)
+
+    # --- 3. Execute the Query ---
     with Session(engine) as session:
-        # Execute the statement and fetch the first (and only) result
         result = session.execute(stmt).first()
-        
-        print(f"--- Here is the result: {result}")
-        
         return result
 
     
