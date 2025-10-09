@@ -1,7 +1,8 @@
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ContextTypes, ConversationHandler
 
-from utils.database import get_recent_transactions, get_summary_periods, get_weekly_average, read_user
+from utils.database import get_period_total, get_recent_transactions, get_summary_periods, get_weekly_total, read_user
+from datetime import datetime
 
 import logging
 
@@ -181,19 +182,23 @@ async def summary_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 async def weekly_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
     user_id = read_user(update.effective_chat.id).id
-    periods = context.user_data['periods']
     
     user_choice = update.message.text.split(' ')
     
     year_choice, week_choice = user_choice[2], user_choice[1]
     
-    week_average = get_weekly_average(user_id, year_choice, week_choice)
+    week_total = get_period_total(
+        user_id,
+        period_type='week',
+        target_year=int(year_choice),
+        target_week=int(week_choice)
+    )
     
-    logger.info("Weekly average: %s, User: %s", week_average, user.first_name)
+    logger.info("Weekly total: %s, User: %s", week_total, user.first_name)
     
     await update.message.reply_text(
-        f"Total income: RM {week_average.total_income:.2f}\n"
-        f"Total expense: RM {week_average.total_expense:.2f}",
+        f"Total income: RM {week_total.total_income:.2f}\n"
+        f"Total expense: RM {week_total.total_expense:.2f}",
         reply_markup=ReplyKeyboardRemove(),
     )
     
@@ -201,10 +206,53 @@ async def weekly_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def monthly_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    periods = context.user_data['periods']
+    user = update.message.from_user
+    user_id = read_user(update.effective_chat.id).id
+    
+    user_choice = update.message.text.split(' ')
+    
+    month_choice, year_choice = user_choice[0], user_choice[1]
+    
+    month_total = get_period_total(
+        user_id,
+        period_type='month',
+        target_year=int(year_choice),
+        target_month=datetime.strptime(month_choice, "%b").month
+    )
+    
+    logger.info("Monthly total: %s, User: %s", month_total, user.first_name)
+    
+    await update.message.reply_text(
+        f"Total income: RM {month_total.total_income:.2f}\n"
+        f"Total expense: RM {month_total.total_expense:.2f}",
+        reply_markup=ReplyKeyboardRemove()
+    )
+    
+    return ConversationHandler.END
+    
 
 async def yearly_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    periods = context.user_data['periods']
+    user = update.message.from_user
+    user_id = read_user(update.effective_chat.id).id
+    
+    year_choice = update.message.text
+    
+    year_total = get_period_total(
+        user_id,
+        period_type='year',
+        target_year=int(year_choice)
+    )
+    
+    logger.info("Year total: %s, User: %s", year_total, user.first_name)
+    
+    await update.message.reply_text(
+        f"Total income: RM {year_total.total_income:.2f}\n"
+        f"Total expense: RM {year_total.total_expense:.2f}",
+        reply_markup=ReplyKeyboardRemove()
+    )
+    
+    return ConversationHandler.END
+
    
 async def cancel_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Cancels and ends the conversation."""
