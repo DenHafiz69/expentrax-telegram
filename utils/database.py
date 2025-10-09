@@ -55,6 +55,19 @@ class Transaction(Base):
     def __repr__(self):
         return f"Transaction(id={self.id}, user_id={self.user_id}"
     
+# Categories table
+class Categories(Base):
+    __tablename__ = 'categories'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    income_categories: Mapped[List[str]] = mapped_column(Text)
+    expense_categories: Mapped[List[str]] = mapped_column(Text)
+    
+    user: Mapped["User"] = relationship(back_populates="categories")
+    
+    def __repr__(self):
+        return f"Categories(id={self.id}, user_id={self.user_id}"
+    
 # Create tables
 Base.metadata.create_all(engine)
 
