@@ -252,25 +252,19 @@ def get_category_id(category_name: str):
             category_id = session.execute(stmt).scalar_one()
             category_type = "custom"
             return category_id, category_type
-        
-def get_default_categories(type_of_transaction: str):
-    '''Get default categories'''
-    stmt = select(DefaultCategory.name).where(DefaultCategory.type_of_transaction == type_of_transaction)
-    with Session(engine) as session:
-        default_categories = session.execute(stmt).scalars().all()
-        return default_categories
-    
-def get_custom_categories(type_of_transaction: str):
-    '''Get custom categories'''
-    stmt = select(CustomCategory.name).where(CustomCategory.type_of_transaction == type_of_transaction)
-    with Session(engine) as session:
-        custom_categories = session.execute(stmt).scalars().all()
-        return custom_categories
     
 def get_categories(type_of_transaction: str):
     '''Get all categories'''
-    default_categories = get_default_categories(type_of_transaction)
-    custom_categories = get_custom_categories(type_of_transaction)
+    
+    # SQL query for default and custom categories
+    stmt_default = select(DefaultCategory.name).where(DefaultCategory.type_of_transaction == type_of_transaction)
+    stmt_custom = select(DefaultCategory.name).where(DefaultCategory.type_of_transaction == type_of_transaction)
+    
+    # Run the query
+    with Session(engine) as session:
+        default_categories = session.execute(stmt_default).scalars().all()
+        custom_categories = session.execute(stmt_custom).scalars().all()
+    
     all_categories = default_categories + custom_categories
     
     # Convert categories into chunks
