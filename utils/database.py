@@ -3,8 +3,6 @@ from typing import List, Optional
 from sqlalchemy import create_engine, String, Float, DateTime, Text, select, ForeignKey, func, case, extract, and_
 from sqlalchemy.orm import DeclarativeBase, Session, mapped_column, Mapped, relationship
 
-from utils.misc import list_chunker
-
 # Uncomment to enable SQLAlchemy logging
 # import logging
 # logging.basicConfig()
@@ -253,7 +251,7 @@ def get_category_id(category_name: str):
             category_type = "custom"
             return category_id, category_type
     
-def get_categories(type_of_transaction: str):
+def get_categories_name(type_of_transaction: str):
     '''Get all categories'''
     
     # SQL query for default and custom categories
@@ -265,12 +263,9 @@ def get_categories(type_of_transaction: str):
         default_categories = session.execute(stmt_default).scalars().all()
         custom_categories = session.execute(stmt_custom).scalars().all()
     
-    all_categories = default_categories + custom_categories
+    categories_name = default_categories + custom_categories
     
-    # Convert categories into chunks
-    chunk_size = 3
-    categories = list_chunker(categories=all_categories, chunk_size=chunk_size)
-    return categories
+    return categories_name
     
 # Create the table
 def init_db():
