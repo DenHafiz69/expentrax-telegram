@@ -1,7 +1,7 @@
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ContextTypes, ConversationHandler
 
-from utils.database import get_period_total, get_recent_transactions, get_summary_periods, get_weekly_total, read_user
+from utils.database import get_period_total, get_recent_transactions, get_summary_periods, read_user
 from datetime import datetime
 
 import logging
@@ -75,7 +75,7 @@ async def recent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     user = update.message.from_user
     
     # Read the transactions from database
-    user_id = read_user(update.effective_chat.id).id
+    user_id = update.effective_chat.id
     transactions = get_recent_transactions(user_id)
     logger.info("Recent transactions: %s, User: %s", transactions, user.first_name)
     
@@ -117,7 +117,7 @@ async def summary_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     logger.info("Summary period: %s, User: %s", summary_choice, user.first_name)
     
     # Read the transactions from database
-    user_id = read_user(update.effective_chat.id).id
+    user_id = update.effective_chat.id
     periods = get_summary_periods(user_id, summary_choice.lower())
     context.user_data['periods'] = periods
     
@@ -181,7 +181,7 @@ async def summary_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 async def weekly_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
-    user_id = read_user(update.effective_chat.id).id
+    user_id = update.effective_chat.id
     
     user_choice = update.message.text.split(' ')
     
@@ -207,7 +207,7 @@ async def weekly_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def monthly_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
-    user_id = read_user(update.effective_chat.id).id
+    user_id = update.effective_chat.id
     
     user_choice = update.message.text.split(' ')
     
@@ -233,7 +233,7 @@ async def monthly_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def yearly_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
-    user_id = read_user(update.effective_chat.id).id
+    user_id = update.effective_chat.id
     
     year_choice = update.message.text
     
