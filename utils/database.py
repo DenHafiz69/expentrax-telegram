@@ -256,7 +256,7 @@ def get_categories_name(type_of_transaction: str):
     
     # SQL query for default and custom categories
     stmt_default = select(DefaultCategory.name).where(DefaultCategory.type_of_transaction == type_of_transaction)
-    stmt_custom = select(DefaultCategory.name).where(DefaultCategory.type_of_transaction == type_of_transaction)
+    stmt_custom = select(CustomCategory.name).where(CustomCategory.type_of_transaction == type_of_transaction)
     
     # Run the query
     with Session(engine) as session:
