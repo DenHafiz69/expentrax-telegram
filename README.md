@@ -39,7 +39,7 @@ This checklist covers additional features to enhance the bot's functionality and
 
 - [ ] Custom Category Management: Users can manage their own expense categories.
 
-    - [ ] Created a dedicated database table for user-defined categories.
+    - [x] Created a dedicated database table for user-defined categories.
 
     - [ ] Developed commands to add, edit, and delete categories.
 
