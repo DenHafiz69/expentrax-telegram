@@ -46,13 +46,7 @@ async def categories_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return ADD_CATEGORY
     
     elif choice == "View Categories":
-        await update.message.reply_text(
-            "Coming soon!",
-            reply_markup=ReplyKeyboardRemove()
-        )
-        
-        return ConversationHandler.END
-        # return VIEW_CATEGORIES
+        return VIEW_CATEGORIES
     
 
 async def add_category(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -77,6 +71,9 @@ async def add_category(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     
 async def view_categories(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user = update.message.from_user
+    
+    # Show the default categories + custom categories
+    # Ask the user if he want to edit the custom categories
     
     logger.info("User: %s", user.first_name)
     

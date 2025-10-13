@@ -2,7 +2,7 @@ from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ContextTypes, ConversationHandler
 
 from utils.database import get_category_id, save_transaction, get_categories
-from utils.misc import is_valid_currency
+from utils.misc import is_valid_currency, list_chunker
 
 import logging
 
@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 
 # Set the categories for income and expense
 
-EXPENSE_CATEGORIES = get_categories("expense")
-INCOME_CATEGORIES = get_categories("income")
+EXPENSE_CATEGORIES = list_chunker(categories=get_categories("expense"), chunk_size=3)
+INCOME_CATEGORIES = list_chunker(categories=get_categories("income"), chunk_size=3)
 
 # Conversation states
 TYPE, AMOUNT, DESCRIPTION, CATEGORY = range(4)
