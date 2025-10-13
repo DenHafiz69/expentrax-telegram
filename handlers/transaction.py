@@ -1,8 +1,8 @@
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ContextTypes, ConversationHandler
 
-from utils.database import save_transaction, read_user
-from utils.validators import is_valid_currency
+from utils.database import get_category_id, save_transaction, get_categories
+from utils.misc import is_valid_currency
 
 import logging
 
@@ -17,18 +17,10 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
-# Set the default categories for income and expense
+# Set the categories for income and expense
 
-EXPENSE_CATEGORIES = [
-    ['Food', 'Groceries', 'Utilities'],
-    ['Health/Medical', 'Transport', 'Savings'],
-    ['Debt', 'Personal', 'Other']
-]
-
-INCOME_CATEGORIES = [
-    ['Paycheck', 'Savings', 'Freelance'],
-    ['Investment', 'Other']
-]
+EXPENSE_CATEGORIES = get_categories("expense")
+INCOME_CATEGORIES = get_categories("income")
 
 # Conversation states
 TYPE, AMOUNT, DESCRIPTION, CATEGORY = range(4)
@@ -120,24 +112,26 @@ async def category_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     user = update.message.from_user
     
     # Store transaction category in temporary dictionary
-    context.user_data['category'] = update.message.text
+    category_name = update.message.text
+    category_id, category_type = get_category_id(category_name)
     
     # Save transaction to database
     save_transaction(
-        user_id=read_user(update.effective_chat.id).id,
+        user_id=update.effective_chat.id,
         type_of_transaction=context.user_data['type'].lower(),
         amount=float(context.user_data['amount']),
-        category=context.user_data['category'],
         description=context.user_data['description'],
-        timestamp=update.message.date
+        timestamp=update.message.date,
+        category_id=category_id,
+        category_type=category_type
     )
     
-    logger.info("Transaction category: %s, User: %s", context.user_data['category'], user.first_name)
+    logger.info("Transaction category: %s, User: %s", category_name, user.first_name)
     await update.message.reply_text(
         f"✅ {context.user_data['type']} added:\n\n"
         f"Description: {context.user_data['description']}\n"
         f"Amount: RM {float(context.user_data['amount']):.2f}\n"
-        f"Category: {context.user_data['category']}\n",
+        f"Category: {category_name}\n",
         reply_markup=ReplyKeyboardRemove()
     )
     
