@@ -1,6 +1,6 @@
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ContextTypes, ConversationHandler
-from utils.database import add_custom_category
+from utils.database import add_custom_category, get_categories_name
 
 import logging
 
@@ -46,7 +46,25 @@ async def categories_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return ADD_CATEGORY
     
     elif choice == "View Categories":
+        reply_keyboard = [['Expense', 'Income']]
+        await update.message.reply_text(
+            "What would you like to view?",
+            reply_markup=ReplyKeyboardMarkup(
+                reply_keyboard, 
+                resize_keyboard=True, 
+                one_time_keyboard=True, 
+                input_field_placeholder="Choose 'Expense' or 'Income'"
+            ),
+        )
+        
         return VIEW_CATEGORIES
+    
+    else:
+        await update.message.reply_text(
+            "Invalid choice. Please select 'Add Category' or 'View Categories'.\n"
+        )
+        
+        return CHOICE
     
 
 async def add_category(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -77,8 +95,23 @@ async def view_categories(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     
     logger.info("User: %s", user.first_name)
     
+    expense_categories = get_categories_name("expense")
+    income_categories = get_categories_name("income")
+    
+    choice = update.message.text
+    message = None
+    
+    if choice == "Expense":
+        message = "Here are the expense categories:\n\n"
+        for category in expense_categories:
+            message += f"{category}\n"
+    elif choice == "Income":
+        message = "Here are the income categories:\n\n"
+        for category in income_categories:
+            message += f"{category}\n"
+    
     await update.message.reply_text(
-        "Coming soon!",
+        f"{message}",
         reply_markup=ReplyKeyboardRemove()
     )
     
