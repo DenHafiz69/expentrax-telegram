@@ -1,8 +1,9 @@
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 from sqlalchemy import create_engine, String, Float, DateTime, Text, select, ForeignKey, func, case, extract, and_
 from sqlalchemy.orm import DeclarativeBase, Session, mapped_column, Mapped, relationship
 
+from utils.misc import list_chunker
 
 # Uncomment to enable SQLAlchemy logging
 # import logging
@@ -10,6 +11,7 @@ from sqlalchemy.orm import DeclarativeBase, Session, mapped_column, Mapped, rela
 # logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
 import logging
+
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
@@ -24,14 +26,19 @@ engine = create_engine("sqlite:///data/expentrax.db")
 class Base(DeclarativeBase):
     pass
 
-# User table
+# User table 
 class User(Base):
     __tablename__ = 'users'
     id: Mapped[int] = mapped_column(primary_key=True)
-    chat_id: Mapped[int] = mapped_column(unique=True)
-    username: Mapped[str] = mapped_column(String, unique=True)
+    username: Mapped[Optional[str]] = mapped_column(String, unique=True)
     
     transactions: Mapped[List["Transaction"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+    
+    # Add this relationship to link to user's custom categories
+    custom_categories: Mapped[List["CustomCategory"]] = relationship(
         back_populates="user",
         cascade="all, delete-orphan"
     )
@@ -46,27 +53,41 @@ class Transaction(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     type_of_transaction: Mapped[str] = mapped_column(String(10))
     amount: Mapped[float] = mapped_column(Float)
-    category: Mapped[str] = mapped_column(String(10))
     description: Mapped[str] = mapped_column(Text)
     timestamp: Mapped[datetime] = mapped_column(DateTime)
+    
+    # Links to an ID in either default_categories or custom_categories
+    category_id: Mapped[int] = mapped_column() 
+    # Specifies which table to look in: 'default' or 'custom'
+    category_type: Mapped[str] = mapped_column(String(10)) 
     
     user: Mapped["User"] = relationship(back_populates="transactions")
     
     def __repr__(self):
-        return f"Transaction(id={self.id}, user_id={self.user_id}"
+        return f"Transaction(id={self.id}, user_id={self.user_id})"
     
-# Categories table
-class Categories(Base):
-    __tablename__ = 'categories'
+# Default categories
+class DefaultCategory(Base):
+    __tablename__ = 'default_categories'
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    income_categories: Mapped[List[str]] = mapped_column(Text)
-    expense_categories: Mapped[List[str]] = mapped_column(Text)
-    
-    user: Mapped["User"] = relationship(back_populates="categories")
-    
+    name: Mapped[str] = mapped_column(String(50), unique=True)
+    type_of_transaction: Mapped[str] = mapped_column(String(10))  # 'income' or 'expense'
+
     def __repr__(self):
-        return f"Categories(id={self.id}, user_id={self.user_id}"
+        return f"DefaultCategory(id={self.id}, name='{self.name}')"
+
+# Custom category
+class CustomCategory(Base):
+    __tablename__ = 'custom_categories'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(50))
+    type_of_transaction: Mapped[str] = mapped_column(String(10))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    
+    user: Mapped["User"] = relationship(back_populates="custom_categories")
+
+    def __repr__(self):
+        return f"CustomCategory(id={self.id}, name='{self.name}', user_id={self.user_id})"
     
 # Create tables
 Base.metadata.create_all(engine)
@@ -82,22 +103,33 @@ def save_user(chat_id, username):
         
     logger.info("User saved to database: %s", user)
     
-def save_transaction(user_id: int, type_of_transaction: str, amount: float, category: str, description: str, timestamp: datetime):
-    with Session(engine) as session:
-        transaction = Transaction(
+def save_transaction(
+    user_id: int, 
+    type_of_transaction: str, 
+    amount: float,
+    description: str, 
+    timestamp: datetime,
+    category_id: int = None,
+    category_type: str = None
+    ):
+    
+    transaction = Transaction(
             user_id=user_id,
             type_of_transaction=type_of_transaction,
-            amount=amount, 
-            category=category, 
+            amount=amount,
             description=description, 
-            timestamp=timestamp
+            timestamp=timestamp,
+            category_id=category_id,
+            category_type=category_type
         )
+    
+    with Session(engine) as session:
         session.add(transaction)
         session.commit()
     
-def read_user(chat_id):
+def read_user(chat_id: int):
     
-    stmt = select(User).where(User.chat_id == chat_id)
+    stmt = select(User).where(User.id == chat_id)
     
     with Session(engine) as session:
         user = session.execute(stmt).scalar_one_or_none()
@@ -193,7 +225,58 @@ def get_period_total(user_id: int, period_type: str, target_year: int, target_mo
     with Session(engine) as session:
         result = session.execute(stmt).first()
         return result
-
+    
+def add_custom_category(user_id: int, name: str, type_of_transaction: str):
+    '''Add custom category to user'''
+    category = CustomCategory(
+        user_id=user_id,
+        name=name,
+        type_of_transaction=type_of_transaction
+    )
+    
+    with Session(engine) as session:
+        session.add(category)
+        session.commit()
+        
+def get_category_id(category_name: str):
+    '''Get category ID from category name'''
+    try:
+        stmt = select(DefaultCategory.id).where(DefaultCategory.name == category_name)
+        with Session(engine) as session:
+            category_id = session.execute(stmt).scalar_one()
+            category_type = "default"
+            return category_id, category_type
+    except:
+        stmt = select(CustomCategory.id).where(CustomCategory.name == category_name)
+        with Session(engine) as session:
+            category_id = session.execute(stmt).scalar_one()
+            category_type = "custom"
+            return category_id, category_type
+        
+def get_default_categories(type_of_transaction: str):
+    '''Get default categories'''
+    stmt = select(DefaultCategory.name).where(DefaultCategory.type_of_transaction == type_of_transaction)
+    with Session(engine) as session:
+        default_categories = session.execute(stmt).scalars().all()
+        return default_categories
+    
+def get_custom_categories(type_of_transaction: str):
+    '''Get custom categories'''
+    stmt = select(CustomCategory.name).where(CustomCategory.type_of_transaction == type_of_transaction)
+    with Session(engine) as session:
+        custom_categories = session.execute(stmt).scalars().all()
+        return custom_categories
+    
+def get_categories(type_of_transaction: str):
+    '''Get all categories'''
+    default_categories = get_default_categories(type_of_transaction)
+    custom_categories = get_custom_categories(type_of_transaction)
+    all_categories = default_categories + custom_categories
+    
+    # Convert categories into chunks
+    chunk_size = 3
+    categories = list_chunker(categories=all_categories, chunk_size=chunk_size)
+    return categories
     
 # Create the table
 def init_db():
