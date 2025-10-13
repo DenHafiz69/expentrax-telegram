@@ -42,7 +42,7 @@ def main() -> None:
     transaction_handler = ConversationHandler(
         entry_points=[CommandHandler("transaction", start_transaction)],
         states={
-            TYPE: [MessageHandler(filters.Regex('^(Income|Expense)$'), type_handler)],
+            TYPE: [MessageHandler(filters.TEXT, type_handler)],
             AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, amount_handler)],
             DESCRIPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, description_handler)],
             CATEGORY: [MessageHandler(filters.TEXT & ~filters.COMMAND, category_handler)]
