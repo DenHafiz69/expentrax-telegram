@@ -36,27 +36,26 @@ async def categories_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     user = update.message.from_user
     
     choice = update.message.text
+    reply_keyboard = [['Expense', 'Income']]
+    keyboard_markup = ReplyKeyboardMarkup(
+        reply_keyboard,
+        resize_keyboard=True,
+        one_time_keyboard=True,
+        input_field_placeholder="Choose 'Expense' or 'Income'"
+    )
     
     if choice == "Add Category":
         await update.message.reply_text(
             "What is the category you want to add?",
-            reply_markup=ReplyKeyboardRemove()
+            reply_markup=keyboard_markup
         )
-        
         return ADD_CATEGORY
     
     elif choice == "View Categories":
-        reply_keyboard = [['Expense', 'Income']]
         await update.message.reply_text(
             "What would you like to view?",
-            reply_markup=ReplyKeyboardMarkup(
-                reply_keyboard, 
-                resize_keyboard=True, 
-                one_time_keyboard=True, 
-                input_field_placeholder="Choose 'Expense' or 'Income'"
-            ),
+            reply_markup=keyboard_markup
         )
-        
         return VIEW_CATEGORIES
     
     else:
@@ -99,7 +98,6 @@ async def view_categories(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     income_categories = get_categories_name("income")
     
     choice = update.message.text
-    message = None
     
     if choice == "Expense":
         message = "Here are the expense categories:\n\n"
