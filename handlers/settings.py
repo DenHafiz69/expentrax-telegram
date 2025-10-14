@@ -14,7 +14,7 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
 
-CHOICE, ADD_CATEGORY, VIEW_CATEGORIES = range(3)
+CHOICE, ADD_CATEGORY, GET_CATEGORY_NAME, VIEW_CATEGORIES = range(4)
 
 async def start_settings(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     reply_keyboard = [['Add Category', 'View Categories']]
@@ -46,7 +46,7 @@ async def categories_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     
     if choice == "Add Category":
         await update.message.reply_text(
-            "What is the category you want to add?",
+            "What type of category you want to add?",
             reply_markup=keyboard_markup
         )
         return ADD_CATEGORY
@@ -62,51 +62,63 @@ async def categories_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await update.message.reply_text(
             "Invalid choice. Please select 'Add Category' or 'View Categories'.\n"
         )
-        
         return CHOICE
-    
 
 async def add_category(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    user = update.message.from_user
 
-    category_name = update.message.text
-    
-    logger.info("Category name: %s, User: %s", category_name, user.first_name)
-    
-    add_custom_category(
-        user_id=user.id,
-        name=category_name,
-        type_of_transaction="expense"
-    )
+    type_of_transaction = update.message.text
+    context.user_data['type_of_transaction'] = type_of_transaction # Save the transaction type temporarily
     
     await update.message.reply_text(
-        f"Category {category_name} added!",
+        f"Okay, you're adding an '{type_of_transaction}' category.\n\n"
+        "What name would you like to give it?",
         reply_markup=ReplyKeyboardRemove()
     )
     
+    return GET_CATEGORY_NAME
+    
+async def get_category_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user = update.message.from_user
+    
+    category_name = update.message.text
+    type_of_transaction = context.user_data.get('type_of_transaction')
+    
+    if not type_of_transaction:
+        # Safety check in case something goes wrong
+        await update.message.reply_text("Something went wrong. Please start over.")
+        return ConversationHandler.END
+    
+    try:
+        # Call your database function with all the required data
+        add_custom_category(
+            user_id=user.id,
+            name=category_name,
+            type_of_transaction=type_of_transaction.lower() # e.g., 'expense'
+        )
+        
+        await update.message.reply_text(
+            f"✅ Category '{category_name}' has been successfully added!",
+            reply_markup=ReplyKeyboardRemove()
+        )
+    except ValueError as e:
+        # Handle cases where the category might already exist
+        await update.message.reply_text(f"⚠️ Error: {e}")
+    finally:
+        # Clean up the temporary storage
+        context.user_data.clear()
+
     return ConversationHandler.END
     
 async def view_categories(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user = update.message.from_user
     
-    # Show the default categories + custom categories
-    # Ask the user if he want to edit the custom categories
-    
-    logger.info("User: %s", user.first_name)
-    
-    expense_categories = get_categories_name("expense")
-    income_categories = get_categories_name("income")
-    
+    # Show the categories that the user want to see i.e "expense" or "income"
     choice = update.message.text
+    categories = get_categories_name(choice.lower())
     
-    if choice == "Expense":
-        message = "Here are the expense categories:\n\n"
-        for category in expense_categories:
-            message += f"{category}\n"
-    elif choice == "Income":
-        message = "Here are the income categories:\n\n"
-        for category in income_categories:
-            message += f"{category}\n"
+    message = "Here are the expense categories:\n\n"
+    for category in categories:
+        message += f"{category}\n"
     
     await update.message.reply_text(
         f"{message}",
