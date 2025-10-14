@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import List, Optional
-from sqlalchemy import create_engine, String, Float, DateTime, Text, select, ForeignKey, func, case, extract, and_
+from sqlalchemy import create_engine, String, Float, DateTime, Text, select, delete, ForeignKey, func, case, extract, and_
 from sqlalchemy.orm import DeclarativeBase, Session, mapped_column, Mapped, relationship
 
 # Uncomment to enable SQLAlchemy logging
@@ -266,6 +266,14 @@ def get_categories_name(type_of_transaction: str):
     categories_name = default_categories + custom_categories
     
     return categories_name
+
+def delete_category(user_id: int, category_id: int):
+    '''Delete category'''
+    stmt = delete(CustomCategory).where(CustomCategory.id == category_id).where(CustomCategory.user_id == user_id) # Only CustomCategory can be deleted
+    
+    with Session(engine) as session:
+        session.execute(stmt)
+        session.commit()
     
 # Create the table
 def init_db():
