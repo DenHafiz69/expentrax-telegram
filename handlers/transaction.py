@@ -1,7 +1,7 @@
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ContextTypes, ConversationHandler
 
-from utils.database import get_category_id, save_transaction, get_categories
+from utils.database import get_category_id, save_transaction, get_categories_name
 from utils.misc import is_valid_currency, list_chunker
 
 import logging
@@ -19,15 +19,15 @@ logger = logging.getLogger(__name__)
 
 # Set the categories for income and expense
 
-EXPENSE_CATEGORIES = list_chunker(categories=get_categories("expense"), chunk_size=3)
-INCOME_CATEGORIES = list_chunker(categories=get_categories("income"), chunk_size=3)
+EXPENSE_CATEGORIES = list_chunker(categories=get_categories_name("expense"), chunk_size=3)
+INCOME_CATEGORIES = list_chunker(categories=get_categories_name("income"), chunk_size=3)
 
 # Conversation states
 TYPE, AMOUNT, DESCRIPTION, CATEGORY = range(4)
 
 # Start the transaction conversation
 async def start_transaction(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    reply_keyboard = [["Income", "Expense"]]
+    reply_keyboard = [["Expense", "Income"]]
     
     await update.message.reply_text(
         "What kind of transaction are we tracking today? 💰", # From Google Gemini
@@ -35,7 +35,7 @@ async def start_transaction(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             reply_keyboard, 
             resize_keyboard=True, 
             one_time_keyboard=True, 
-            input_field_placeholder="Add 'Income' or 'Expense'"
+            input_field_placeholder="Add 'Expense' or 'Income'"
         ),
     )
     
