@@ -37,11 +37,11 @@ This checklist outlines the essential features required for a minimum viable pro
 
 This checklist covers additional features to enhance the bot's functionality and demonstrate advanced skills.
 
-- [ ] Custom Category Management: Users can manage their own expense categories.
+- [x] Custom Category Management: Users can manage their own expense categories.
 
     - [x] Created a dedicated database table for user-defined categories.
 
-    - [ ] Developed commands to add, edit, and delete categories.
+    - [x] Developed commands to add, edit, and delete categories.
 
 - [ ] Budgeting: Users can set and track budgets for different categories.
 
