@@ -14,10 +14,10 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
 
-CHOICE, ADD_CATEGORY, GET_CATEGORY_NAME, VIEW_CATEGORIES = range(4)
+CHOICE, ADD_CATEGORY, GET_CATEGORY_NAME, VIEW_CATEGORIES, DELETE_CATEGORIES = range(5)
 
 async def start_settings(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    reply_keyboard = [['Add Category', 'View Categories']]
+    reply_keyboard = [['Add Category', 'View Categories', 'Delete Categories']]
     
     await update.message.reply_text(
         "What would you like to do?",
@@ -25,7 +25,7 @@ async def start_settings(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             reply_keyboard, 
             resize_keyboard=True, 
             one_time_keyboard=True, 
-            input_field_placeholder="Choose 'Add Category' or 'View Categories'"
+            input_field_placeholder="Choose 'Add Category' or 'View Categories', 'Delete Categories'"
         ),
     )
     
@@ -79,9 +79,18 @@ async def add_category(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     
 async def get_category_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user = update.message.from_user
+    user_id = update.effective_chat.id
     
     category_name = update.message.text
     type_of_transaction = context.user_data.get('type_of_transaction')
+    
+    # Check if the category is already in database
+    if category_name in get_categories_name(type_of_transaction.lower(), user_id):
+        await update.message.reply_text(
+            f"Categry {category_name} already exists. Please choose another name.",
+        )
+        
+        return GET_CATEGORY_NAME
     
     if not type_of_transaction:
         # Safety check in case something goes wrong
@@ -91,7 +100,7 @@ async def get_category_name(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     try:
         # Call your database function with all the required data
         add_custom_category(
-            user_id=user.id,
+            user_id=user_id,
             name=category_name,
             type_of_transaction=type_of_transaction.lower() # e.g., 'expense'
         )
@@ -126,6 +135,18 @@ async def view_categories(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     )
     
     return ConversationHandler.END
+
+async def delete_categories(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+
+    user = update.message.from_user
+    user_id = update.effective_chat.id
+
+    # Display a list of custom category that can be deleted
+
+
+    # User input the id of category to be deleted
+
+    pass
     
     
 async def cancel_settings(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
