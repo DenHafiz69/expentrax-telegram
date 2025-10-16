@@ -1,7 +1,7 @@
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ContextTypes, ConversationHandler
 
-from utils.database import get_period_total, get_recent_transactions, get_summary_periods, read_user
+from utils.database import get_period_total, get_recent_transactions, get_summary_periods, read_user, get_category_name_by_id
 from datetime import datetime
 
 import logging
@@ -73,9 +73,9 @@ async def history_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 async def recent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Show recent transactions by the user"""
     user = update.message.from_user
+    user_id = update.effective_chat.id
     
     # Read the transactions from database
-    user_id = update.effective_chat.id
     transactions = get_recent_transactions(user_id)
     logger.info("Recent transactions: %s, User: %s", transactions, user.first_name)
     
@@ -83,7 +83,7 @@ async def recent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await update.message.reply_text(
             "No recent transactions found.",
             reply_markup=ReplyKeyboardRemove()
-            )
+        )
         
         return ConversationHandler.END
     
@@ -98,7 +98,7 @@ async def recent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             f"{transaction.timestamp.strftime('%Y-%m-%d')} | "  # Date
             f"{type_prefix} | "                            # Income/Expense with emoji
             f"RM {transaction.amount:.2f} | "              # Amount (formatted)
-            f"*{transaction.category}* | "                 # Category (bold for Markdown)
+            f"*{get_category_name_by_id(transaction.category_id)}* | "                 # Category (bold for Markdown)
             f"{transaction.description}\n"                 # Description
         )
         
