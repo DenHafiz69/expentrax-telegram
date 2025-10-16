@@ -240,6 +240,7 @@ def get_category_id(category_name: str):
     '''Get category ID from category name'''
     
     stmt = select(DefaultCategory.id).where(DefaultCategory.name == category_name)
+
     with Session(engine) as session:
         result = session.execute(stmt).scalar_one_or_none()
 
@@ -287,7 +288,7 @@ def get_category_name_by_id(id: int):
 
 def get_custom_categories_name_and_id(user_id: int, type_of_transaction: str):
 
-    stmt = select(CustomCategory.name).where(CustomCategory.user_id == user_id)
+    stmt = select(CustomCategory.name).where(CustomCategory.user_id == user_id).where(CustomCategory.type_of_transaction == type_of_transaction)
 
     with Session(engine) as session:
         result = session.execute(stmt).scalars().all()
