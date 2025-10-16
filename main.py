@@ -5,24 +5,49 @@ import logging
 
 from utils.database import init_db
 from handlers.start import start_command
-from handlers.transaction import start_transaction, type_handler, amount_handler, description_handler, category_handler, cancel_transaction
-from handlers.history import summary_handler, start_history, history_choice, cancel_history
+from handlers.transaction import (
+    start_transaction,
+    type_handler,
+    amount_handler,
+    description_handler,
+    category_handler,
+    cancel_transaction,
+)
+from handlers.history import (
+    summary_handler,
+    start_history,
+    history_choice,
+    cancel_history,
+)
 from handlers.history import weekly_handler, monthly_handler, yearly_handler
-from handlers.settings import start_settings, categories_handler, add_category, get_category_name, view_categories, cancel_settings
+from handlers.settings import (
+    start_settings,
+    categories_handler,
+    add_category,
+    database_action,
+    view_categories,
+    delete_categories,
+    cancel_settings,
+)
 
 
-from telegram.ext import filters, ApplicationBuilder, ContextTypes, CommandHandler, ConversationHandler, MessageHandler
+from telegram.ext import (
+    filters,
+    ApplicationBuilder,
+    CommandHandler,
+    ConversationHandler,
+    MessageHandler,
+)
 
 logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
 
 # Load environment variables from .env file
 load_dotenv()
 
 # Access environment variables
-BOT_TOKEN = os.getenv('BOT_TOKEN')
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 # Transaction states
 TYPE, AMOUNT, DESCRIPTION, CATEGORY = range(4)
@@ -31,25 +56,30 @@ TYPE, AMOUNT, DESCRIPTION, CATEGORY = range(4)
 CHOICE, SUMMARY, WEEKLY, MONTHLY, YEARLY = range(5)
 
 # Settings states
-CHOICE, ADD_CATEGORY, GET_CATEGORY_NAME, VIEW_CATEGORIES = range(4)
+CHOICE, ADD_CATEGORY, DATABASE_ACTION, VIEW_CATEGORIES, DELETE_CATEGORIES = range(5)
+
 
 def main() -> None:
     application = ApplicationBuilder().token(BOT_TOKEN).build()
 
     # Start the application
     application.add_handler(CommandHandler("start", start_command))
-    
+
     transaction_handler = ConversationHandler(
         entry_points=[CommandHandler("transaction", start_transaction)],
         states={
             TYPE: [MessageHandler(filters.TEXT, type_handler)],
             AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, amount_handler)],
-            DESCRIPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, description_handler)],
-            CATEGORY: [MessageHandler(filters.TEXT & ~filters.COMMAND, category_handler)]
+            DESCRIPTION: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, description_handler)
+            ],
+            CATEGORY: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, category_handler)
+            ],
         },
         fallbacks=[CommandHandler("cancel", cancel_transaction)],
     )
-    
+
     history_handler = ConversationHandler(
         entry_points=[CommandHandler("history", start_history)],
         states={
@@ -57,29 +87,40 @@ def main() -> None:
             SUMMARY: [MessageHandler(filters.TEXT & ~filters.COMMAND, summary_handler)],
             WEEKLY: [MessageHandler(filters.TEXT & ~filters.COMMAND, weekly_handler)],
             MONTHLY: [MessageHandler(filters.TEXT & ~filters.COMMAND, monthly_handler)],
-            YEARLY: [MessageHandler(filters.TEXT & ~filters.COMMAND, yearly_handler)]
+            YEARLY: [MessageHandler(filters.TEXT & ~filters.COMMAND, yearly_handler)],
         },
         fallbacks=[CommandHandler("cancel", cancel_history)],
     )
-    
+
     settings_handler = ConversationHandler(
         entry_points=[CommandHandler("settings", start_settings)],
         states={
-            CHOICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, categories_handler)],
-            ADD_CATEGORY: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_category)],
-            GET_CATEGORY_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_category_name)],
-            VIEW_CATEGORIES: [MessageHandler(filters.TEXT & ~filters.COMMAND, view_categories)]
+            CHOICE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, categories_handler)
+            ],
+            ADD_CATEGORY: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, add_category)
+            ],
+            DATABASE_ACTION: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, database_action)
+            ],
+            VIEW_CATEGORIES: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, view_categories)
+            ],
+            DELETE_CATEGORIES: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, delete_categories)
+            ]
         },
-        fallbacks=[CommandHandler("cancel", cancel_settings)]
+        fallbacks=[CommandHandler("cancel", cancel_settings)],
     )
-    
+
     application.add_handler(transaction_handler)
     application.add_handler(history_handler)
     application.add_handler(settings_handler)
-    
+
     application.run_polling()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     init_db()
     main()

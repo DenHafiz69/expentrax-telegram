@@ -1,6 +1,7 @@
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ContextTypes, ConversationHandler
-from utils.database import add_custom_category, get_categories_name
+from utils.database import add_custom_category, get_categories_name, get_custom_categories_name_and_id, get_category_id, delete_category
+from utils.misc import list_chunker
 
 import logging
 
@@ -14,7 +15,7 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
 
-CHOICE, ADD_CATEGORY, GET_CATEGORY_NAME, VIEW_CATEGORIES, DELETE_CATEGORIES = range(5)
+CHOICE, ADD_CATEGORY, DATABASE_ACTION, VIEW_CATEGORIES, DELETE_CATEGORIES = range(5)
 
 async def start_settings(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     reply_keyboard = [['Add Category', 'View Categories', 'Delete Categories']]
@@ -57,6 +58,13 @@ async def categories_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
             reply_markup=keyboard_markup
         )
         return VIEW_CATEGORIES
+
+    elif choice == "Delete Categories":
+        await update.message.reply_text(
+            "Which would you like to delete?",
+            reply_markup=keyboard_markup
+        )
+        return DELETE_CATEGORIES
     
     else:
         await update.message.reply_text(
@@ -67,6 +75,7 @@ async def categories_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def add_category(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     type_of_transaction = update.message.text
+    context.user_data['action'] = 'add_category'
     context.user_data['type_of_transaction'] = type_of_transaction # Save the transaction type temporarily
     
     await update.message.reply_text(
@@ -75,46 +84,79 @@ async def add_category(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         reply_markup=ReplyKeyboardRemove()
     )
     
-    return GET_CATEGORY_NAME
-    
-async def get_category_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    return DATABASE_ACTION
+
+
+async def delete_categories(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+
     user = update.message.from_user
     user_id = update.effective_chat.id
+    type_of_transaction = update.message.text.lower()
+    context.user_data['action'] = 'delete_category'
+   
+    categories = list_chunker(get_custom_categories_name_and_id(user_id, type_of_transaction), 3)
+    # Display a list of custom category that can be deleted
+    reply_keyboard = ReplyKeyboardMarkup(
+        categories,
+        resize_keyboard=True, 
+        one_time_keyboard=True,
+    )
+
+    await update.message.reply_text(
+        "Which category would you like to delete?",
+        reply_markup = ReplyKeyboardMarkup(
+            categories,
+            resize_keyboard=True,
+            one_time_keyboard=True,
+            input_field_placeholder="Choose the category that you want to delete."
+        )
+    )
+
+    return DATABASE_ACTION
+    
+async def database_action(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user = update.message.from_user
+    user_id = update.effective_chat.id
+    action = context.user_data.get('action')
     
     category_name = update.message.text
     type_of_transaction = context.user_data.get('type_of_transaction')
     
-    # Check if the category is already in database
-    if category_name in get_categories_name(type_of_transaction.lower(), user_id):
-        await update.message.reply_text(
-            f"Categry {category_name} already exists. Please choose another name.",
-        )
+    # Check if the user want to add or delete category
+    if action == "add_category":
+        # Check if the category is already in database
+        if category_name in get_categories_name(type_of_transaction.lower(), user_id):
+            await update.message.reply_text(
+                f"Categry {category_name} already exists. Please choose another name.",
+            )
         
-        return GET_CATEGORY_NAME
-    
-    if not type_of_transaction:
-        # Safety check in case something goes wrong
-        await update.message.reply_text("Something went wrong. Please start over.")
-        return ConversationHandler.END
-    
-    try:
-        # Call your database function with all the required data
-        add_custom_category(
-            user_id=user_id,
-            name=category_name,
-            type_of_transaction=type_of_transaction.lower() # e.g., 'expense'
-        )
+            return DATABASE_ACTION
+
+        try:
+            # Call your database function with all the required data
+            add_custom_category(
+                user_id=user_id,
+                name=category_name,
+                type_of_transaction=type_of_transaction.lower() # e.g., 'expense'
+            )
         
+            await update.message.reply_text(
+                f"✅ Category '{category_name}' has been successfully added!",
+                reply_markup=ReplyKeyboardRemove()
+            )
+        except:
+            pass
+
+    elif action == "delete_category":
+
+        category_id = get_category_id(category_name)
+
+        delete_category(user_id, category_id)
+
         await update.message.reply_text(
-            f"✅ Category '{category_name}' has been successfully added!",
+            f"⛔️ Category '{category_name}' has been successfully deleted!",
             reply_markup=ReplyKeyboardRemove()
-        )
-    except ValueError as e:
-        # Handle cases where the category might already exist
-        await update.message.reply_text(f"⚠️ Error: {e}")
-    finally:
-        # Clean up the temporary storage
-        context.user_data.clear()
+        )    
 
     return ConversationHandler.END
     
@@ -136,17 +178,6 @@ async def view_categories(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     
     return ConversationHandler.END
 
-async def delete_categories(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-
-    user = update.message.from_user
-    user_id = update.effective_chat.id
-
-    # Display a list of custom category that can be deleted
-
-
-    # User input the id of category to be deleted
-
-    pass
     
     
 async def cancel_settings(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:

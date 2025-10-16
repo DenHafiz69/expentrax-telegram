@@ -107,8 +107,8 @@ def save_transaction(
     amount: float,
     description: str, 
     timestamp: datetime,
-    category_id: int = None,
-    category_type: str = None
+    category_id: int,
+    category_type: str
     ):
     
     transaction = Transaction(
@@ -238,20 +238,22 @@ def add_custom_category(user_id: int, name: str, type_of_transaction: str):
         
 def get_category_id(category_name: str):
     '''Get category ID from category name'''
-    try:
-        stmt = select(DefaultCategory.id).where(DefaultCategory.name == category_name)
-        with Session(engine) as session:
-            category_id = session.execute(stmt).scalar_one()
-            category_type = "default"
-            return category_id, category_type
-    except:
+    
+    stmt = select(DefaultCategory.id).where(DefaultCategory.name == category_name)
+    with Session(engine) as session:
+        result = session.execute(stmt).scalar_one_or_none()
+
+    if result:
+        return result
+
+    else:
         stmt = select(CustomCategory.id).where(CustomCategory.name == category_name)
         with Session(engine) as session:
-            category_id = session.execute(stmt).scalar_one()
-            category_type = "custom"
-            return category_id, category_type
-    
-def get_categories_name(type_of_transaction: str, user_id: int = None):
+            result = session.execute(stmt).scalar_one()
+
+        return result
+
+def get_categories_name(type_of_transaction: str, user_id: int = 0):
     '''Get all categories'''
     
     # SQL query for default and custom categories
@@ -282,8 +284,15 @@ def get_category_name_by_id(id: int):
         with Session(engine) as session:
             result = session.execute(stmt_custom).scalar_one_or_none()
             return result
-    
-        
+
+def get_custom_categories_name_and_id(user_id: int, type_of_transaction: str):
+
+    stmt = select(CustomCategory.name).where(CustomCategory.user_id == user_id)
+
+    with Session(engine) as session:
+        result = session.execute(stmt).scalars().all()
+
+    return result
 
 def delete_category(user_id: int, category_id: int):
     '''Delete category'''
