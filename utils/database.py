@@ -251,7 +251,7 @@ def get_category_id(category_name: str):
             category_type = "custom"
             return category_id, category_type
     
-def get_categories_name(type_of_transaction: str):
+def get_categories_name(type_of_transaction: str, user_id: int = None):
     '''Get all categories'''
     
     # SQL query for default and custom categories
@@ -266,6 +266,24 @@ def get_categories_name(type_of_transaction: str):
     categories_name = default_categories + custom_categories
     
     return categories_name
+
+def get_category_name_by_id(id: int):
+    '''Get category name with id'''
+
+    stmt_default = select(DefaultCategory.name).where(DefaultCategory.id == id)
+    stmt_custom = select(CustomCategory.name).where(CustomCategory.id == id)
+
+    with Session(engine) as session:
+        result = session.execute(stmt_default).scalar_one_or_none()
+
+    if result:
+        return result
+    else:
+        with Session(engine) as session:
+            result = session.execute(stmt_custom).scalar_one_or_none()
+            return result
+    
+        
 
 def delete_category(user_id: int, category_id: int):
     '''Delete category'''
