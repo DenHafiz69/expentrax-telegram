@@ -42,7 +42,7 @@ class User(Base):
     )
     
     def __repr__(self):
-        return f"User(id={self.id}, chat_id={self.chat_id}, username={self.username})"
+        return f"User(id={self.id}, username={self.username})"
     
 # Transaction table
 class Transaction(Base):
@@ -90,10 +90,10 @@ class CustomCategory(Base):
 # Create tables
 Base.metadata.create_all(engine)
 
-def save_user(chat_id, username):
+def save_user(id, username):
     with Session(engine) as session:
         user = User(
-            chat_id=chat_id, 
+            id=id,
             username=username
         )
         session.add(user)
@@ -125,9 +125,9 @@ def save_transaction(
         session.add(transaction)
         session.commit()
     
-def read_user(chat_id: int):
+def read_user(id: int):
     
-    stmt = select(User).where(User.id == chat_id)
+    stmt = select(User).where(User.id == id)
     
     with Session(engine) as session:
         user = session.execute(stmt).scalar_one_or_none()
@@ -269,6 +269,24 @@ def get_categories_name(type_of_transaction: str, user_id: int = 0):
     categories_name = default_categories + custom_categories
     
     return categories_name
+
+def get_category_type(category_id: int):
+
+    stmt_default = select(DefaultCategory.type_of_transaction).where(DefaultCategory.id == category_id)
+
+    with Session(engine) as session:
+        result = session.execute(stmt_default).scalar_one_or_none()
+
+    if result:
+        return result
+
+    else:
+        stmt_custom = select(CustomCategget_category_typeory.type_of_transaction).where(CustomCategory.id == category_id)
+
+        with Session(engine) as session:
+            result = session.execute(stmt_custom).scalar_one_or_none()
+            return result
+        
 
 def get_category_name_by_id(id: int):
     '''Get category name with id'''

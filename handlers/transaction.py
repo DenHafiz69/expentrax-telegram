@@ -1,7 +1,7 @@
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ContextTypes, ConversationHandler
 
-from utils.database import get_category_id, save_transaction, get_categories_name
+from utils.database import get_category_id, save_transaction, get_categories_name, get_category_type
 from utils.misc import is_valid_currency, list_chunker
 
 import logging
@@ -113,7 +113,8 @@ async def category_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     
     # Store transaction category in temporary dictionary
     category_name = update.message.text
-    category_id, category_type = get_category_id(category_name)
+    category_id = get_category_id(category_name)
+    category_type = get_category_type(category_id)
     
     # Save transaction to database
     save_transaction(
