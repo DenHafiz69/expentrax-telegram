@@ -31,6 +31,12 @@ This checklist outlines the essential features required for a minimum viable pro
 
     - [x] Implemented a command to show total expenses for a specific period (e.g., this month).
 
+- [ ] **Balance Checking**: Check your current balance (income-expense)
+
+    - [ ] Need a way to reset your balance
+
+    - [ ] Can also check the balance for each category 
+
 ---
 
 ## ✨ "Wow" Factors
