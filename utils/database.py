@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import List, Optional
-from sqlalchemy import create_engine, String, Float, DateTime, Text, select, delete, ForeignKey, func, case, extract, and_
+from sqlalchemy import create_engine, String, Float, Integer, DateTime, Text, select, delete, ForeignKey, func, case, extract, and_
 from sqlalchemy.orm import DeclarativeBase, Session, mapped_column, Mapped, relationship
 
 # Uncomment to enable SQLAlchemy logging
@@ -37,6 +37,11 @@ class User(Base):
     
     # Add this relationship to link to user's custom categories
     custom_categories: Mapped[List["CustomCategory"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+
+    budget: Mapped[List["Budget"]] = relationship(
         back_populates="user",
         cascade="all, delete-orphan"
     )
@@ -86,6 +91,22 @@ class CustomCategory(Base):
 
     def __repr__(self):
         return f"CustomCategory(id={self.id}, name='{self.name}', user_id={self.user_id})"
+
+# Budget
+class Budget(Base):
+    __tablename__ = 'budget'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    budgeted_amount: Mapped[float] = mapped_column(Float)
+    year: Mapped[int] = mapped_column(Integer)
+    month: Mapped[int] = mapped_column(Integer)
+    category_id: Mapped[int] = mapped_column(Integer)
+    category_type: Mapped[str] = mapped_column(String(10))
+
+    user: Mapped["User"] = relationship(back_populates="budget")
+
+    def __repr__(self):
+        return f"Budget(id={self.id}, user_id={self.user_id})"
     
 # Create tables
 Base.metadata.create_all(engine)
