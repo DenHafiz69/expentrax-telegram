@@ -341,6 +341,23 @@ def delete_category(user_id: int, category_id: int):
     with Session(engine) as session:
         session.execute(stmt)
         session.commit()
+
+# Budget queries
+
+def set_change_budget(user_id: int, budgeted_amount:float, category_id: int, category_type: str, month: int, year: int):
+    '''Set budget for a user for a category'''
+    budget = Budget(
+        user_id=user_id,
+        budgeted_amount=budgeted_amount,
+        year=year,
+        month=month,
+        category_id=category_id,
+        category_type=category_type
+    )
+
+    with Session(engine) as session:
+        session.add(budget)
+        session.commit()
     
 # Create the table
 def init_db():
