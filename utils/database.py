@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import List, Optional
-from sqlalchemy import create_engine, String, Float, Integer, DateTime, Text, select, delete, ForeignKey, func, case, extract, and_
+from sqlalchemy import create_engine, String, Float, Integer, DateTime, Text, select, delete, update, ForeignKey, func, case, extract, and_
 from sqlalchemy.orm import DeclarativeBase, Session, mapped_column, Mapped, relationship
 
 # Uncomment to enable SQLAlchemy logging
@@ -302,7 +302,7 @@ def get_category_type(category_id: int):
         return result
 
     else:
-        stmt_custom = select(CustomCategget_category_typeory.type_of_transaction).where(CustomCategory.id == category_id)
+        stmt_custom = select(CustomCategory.type_of_transaction).where(CustomCategory.id == category_id)
 
         with Session(engine) as session:
             result = session.execute(stmt_custom).scalar_one_or_none()
@@ -344,7 +344,7 @@ def delete_category(user_id: int, category_id: int):
 
 # Budget queries
 
-def set_change_budget(user_id: int, budgeted_amount:float, category_id: int, category_type: str, month: int, year: int):
+def set_budget(user_id: int, budgeted_amount:float, category_id: int, category_type: str, month: int, year: int):
     '''Set budget for a user for a category'''
     budget = Budget(
         user_id=user_id,
@@ -357,6 +357,30 @@ def set_change_budget(user_id: int, budgeted_amount:float, category_id: int, cat
 
     with Session(engine) as session:
         session.add(budget)
+        session.commit()
+
+def change_budget(user_id:int, budgeted_amount:float, category_id: int, category_type: str, changed_month: int):
+    '''Change budget for this month or next month'''
+    stmt = (
+        update(Budget.budgeted_amount)
+        .where(Budget.user_id == user_id)
+        .where(Budget.category_id == category_id)
+        .where(Budget.category_type == category_type)
+    )
+
+    with Session(engine) as session:
+        session.execute(stmt)
+        session.commit()
+
+def check_budget(user_id: int):
+    '''Send the whole budget for the user'''
+    stmt = (
+        select(Budget)
+        .where(Budget.user_id == user_id)
+    )
+
+    with Session(engine) as session:
+        session.execute(stmt)
         session.commit()
     
 # Create the table
