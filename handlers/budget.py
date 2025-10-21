@@ -15,9 +15,39 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
 
+CHOICE, SET, CHANGE, CHECK = range(4)
 
 async def start_budget(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    pass
+    reply_keyboard = [["Set", "Change", "Check Balance"]]
+    
+    await update.message.reply_text(
+        "What would you like to do today?",
+        reply_markup=ReplyKeyboardMarkup(
+            reply_keyboard, 
+            resize_keyboard=True, 
+            one_time_keyboard=True, 
+            input_field_placeholder="Choose 'Set', 'Change', or 'Check Balance'"
+        ),
+    )
+    
+    return CHOICE
+ 
+async def choice_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
+    user_id = update.effective_chat.id
+    choice = update.message.text
 
-async def 
+    if choice == "Set":
+        # Query database to get this and next month name
+        # Ask the user which month he want to set for
+        #
+        # Query database and ask user which category and the budget amount
+        # Maybe can create function to copy from last month too
+        #
+    elif choice == "Change":
+        # Same process as Set
+        # Except for the copy from last month
+
+    elif choice == "Check Balance":
+
+        # Call the function to print the balance for all category for current month
