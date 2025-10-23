@@ -156,7 +156,12 @@ def read_user(id: int):
 
 def get_recent_transactions(user_id: int, limit=3):
     
-    stmt = select(Transaction).where(Transaction.user_id == user_id).order_by(Transaction.timestamp.desc()).limit(limit)
+    stmt = (
+        select(Transaction)
+        .where(Transaction.user_id == user_id)
+        .order_by(Transaction.timestamp.desc())
+        .limit(limit)
+    )
     
     with Session(engine) as session:
         transactions = session.execute(stmt).scalars().all()
