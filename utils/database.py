@@ -32,7 +32,7 @@ class User(Base):
     __tablename__ = 'users'
     id: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[Optional[str]] = mapped_column(String, unique=True)
-    currency: Mapped[Optional[str]] = mapped_column(String(5), default='$')
+    currency: Mapped[Optional[str]] = mapped_column(String(5), default='RM')
 
     transactions: Mapped[List["Transaction"]] = relationship(
         back_populates="user",
@@ -523,6 +523,16 @@ def set_currency(user_id: int, currency_symbol: str):
     with Session(engine) as session:
         session.execute(stmt)
         session.commit()
+
+
+def get_currency(user_id: int) -> str:
+    """ Get the currency for user"""
+    stmt = (
+        select(User.currency)
+        .where(User.id == user_id)
+    )
+    with Session(engine) as session:
+        return session.execute(stmt).scalar_one()
 
 
 def delete_user_data(user_id: int):
