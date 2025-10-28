@@ -34,8 +34,8 @@ async def start_transaction(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     """Start the conversation and ask for transaction type."""
     keyboard = [
         [
-            InlineKeyboardButton("Expense", callback_data="Expense"),
-            InlineKeyboardButton("Income", callback_data="Income"),
+            InlineKeyboardButton("💸 Expense", callback_data="Expense"),
+            InlineKeyboardButton("💰 Income", callback_data="Income"),
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -74,7 +74,7 @@ async def amount_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     # Check if the currency is valid
     if not is_valid_currency(context.user_data['amount']):
         await update.message.reply_text(
-            "Invalid amount. Please provide a valid currency."
+            "❌ Invalid amount. Please try again with a valid number."
         )
         return AMOUNT
 
@@ -110,7 +110,7 @@ async def description_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         for row in categories
     ]
     keyboard.append([InlineKeyboardButton(
-        "Back", callback_data="back_to_description")])
+        "⬅️ Back", callback_data="back_to_description")])
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.message.reply_text(
@@ -185,7 +185,7 @@ async def cancel_transaction(update: Update, context: ContextTypes.DEFAULT_TYPE)
     logger.info("User %s canceled the conversation.", user.first_name)
 
     await update.message.reply_text(
-        "Transaction cancelled."
+        "❌ Transaction cancelled."
     )
 
     return ConversationHandler.END

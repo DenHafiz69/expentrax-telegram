@@ -27,8 +27,8 @@ async def start_recurring_transaction(update: Update, context: ContextTypes.DEFA
     """Start the conversation and ask for transaction type."""
     keyboard = [
         [
-            InlineKeyboardButton("Expense", callback_data="Expense"),
-            InlineKeyboardButton("Income", callback_data="Income"),
+            InlineKeyboardButton("💸 Expense", callback_data="Expense"),
+            InlineKeyboardButton("💰 Income", callback_data="Income"),
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -57,7 +57,7 @@ async def amount_handler_recurring(update: Update, context: ContextTypes.DEFAULT
     user = update.message.from_user
     context.user_data['amount'] = update.message.text
     if not is_valid_currency(context.user_data['amount']):
-        await update.message.reply_text("Invalid amount. Please provide a valid currency.")
+        await update.message.reply_text("❌ Invalid amount. Please provide a valid currency.")
         return AMOUNT
     logger.info("Recurring transaction amount: %s, User: %s",
                 context.user_data['amount'], user.first_name)
@@ -128,7 +128,7 @@ async def start_date_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         context.user_data['start_date'] = datetime.strptime(
             update.message.text, '%Y-%m-%d')
     except ValueError:
-        await update.message.reply_text("Invalid date format. Please use YYYY-MM-DD.")
+        await update.message.reply_text("❌ Invalid date format. Please use YYYY-MM-DD.")
         return START_DATE
     logger.info("Recurring transaction start date: %s, User: %s",
                 context.user_data['start_date'], user.first_name)
@@ -148,7 +148,7 @@ async def end_date_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         try:
             end_date = datetime.strptime(end_date_text, '%Y-%m-%d')
         except ValueError:
-            await update.message.reply_text("Invalid date format. Please use YYYY-MM-DD or 'None'.")
+            await update.message.reply_text("❌ Invalid date format. Please use YYYY-MM-DD or 'None'.")
             return END_DATE
 
     context.user_data['end_date'] = end_date
@@ -188,5 +188,5 @@ async def cancel_recurring_transaction(update: Update, context: ContextTypes.DEF
     user = update.message.from_user
     logger.info("User %s canceled the recurring transaction setup.",
                 user.first_name)
-    await update.message.reply_text("Recurring transaction setup canceled.")
+    await update.message.reply_text("❌ Recurring transaction setup cancelled.")
     return ConversationHandler.END
