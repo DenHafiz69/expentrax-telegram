@@ -1,120 +1,173 @@
+# Import necessary modules
+from dotenv import load_dotenv
+import os
 import logging
-from telegram import Update
-from datetime import time
-from telegram.ext import filters, MessageHandler, ApplicationBuilder, CommandHandler, ConversationHandler, CallbackQueryHandler
-from database.database import init_db
 
-# Import from config.py
-from config import BOT_TOKEN, LOG_LEVEL, LOG_FORMAT
-
-# Configure logging
-logging.basicConfig(
-    format=LOG_FORMAT,
-    level=LOG_LEVEL
+from utils.database import init_db
+from handlers.start import start_command
+from handlers.transaction import (
+    start_transaction,
+    type_handler,
+    amount_handler,
+    description_handler,
+    category_handler,
+    cancel_transaction,
+    back_handler,
+)
+from handlers.history import (
+    summary_handler,
+    start_history,
+    history_choice,
+    cancel_history,
+    weekly_handler,
+    monthly_handler,
+    yearly_handler,
+    back_history_handler,
+)
+from handlers.settings import (
+    start_settings,
+    categories_handler,
+    add_category,
+    database_action,
+    view_categories,
+    delete_categories,
+    cancel_settings,
+    set_currency_handler,
+    reset_data_confirm_handler,
+    back_settings_handler,
+)
+from handlers.budget import (
+    start_budget,
+    choice_handler,
+    month_selection_handler,
+    category_selection_handler,
+    amount_input_handler,
+    cancel_budget,
+    back_budget_handler,
 )
 
-# Import commands from handlers
-from handlers.start_handler import start_command
-from handlers.help_handler import help_command
 
-from handlers import transaction_handler as transaction
-from handlers import view_handler, summary_handler as summary, search_handler as search
-from handlers import export_handler as export, budget_handler as budget, job_handler as jobs
+from telegram.ext import (
+    filters,
+    ApplicationBuilder,
+    CommandHandler,
+    ConversationHandler,
+    MessageHandler,
+    CallbackQueryHandler,
+)
 
-def get_transaction_handler(command: str):
-    return ConversationHandler(
-        entry_points=[CommandHandler(command, transaction.add)],
-        states={
-            0: [MessageHandler(filters.TEXT & ~filters.COMMAND, transaction.get_description)],
-            1: [MessageHandler(filters.TEXT & ~filters.COMMAND, transaction.get_amount)],
-            2: [MessageHandler(filters.TEXT & ~filters.COMMAND, transaction.get_category)],
-        },
-        fallbacks=[CommandHandler("cancel", transaction.cancel)],
-        allow_reentry=True
-    )
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+)
 
-# Function to register all handler
-def register_handler(application):
-    """Take the application argument and register all handler
+# Load environment variables from .env file
+load_dotenv()
 
-    Args:
-        application (ApplicationBuilder): An application builder object
-    """
+# Access environment variables
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-    # Basic commands
-    application.add_handler(CommandHandler("start", start_command))
-    application.add_handler(CommandHandler("help", help_command))
-    
-    # Transaction Handlers
-    application.add_handler(get_transaction_handler("add_expense"))
-    application.add_handler(get_transaction_handler("add_income"))
-    application.add_handler(CommandHandler("view_expenses", view_handler.view_expenses))
-    
-    application.add_handler(ConversationHandler(
-        entry_points=[CommandHandler("summary", summary.start)],
-        states={
-            0: [MessageHandler(filters.TEXT & ~filters.COMMAND, summary.choose_period)],
-            1: [MessageHandler(filters.TEXT & ~filters.COMMAND, summary.choose_option)]
-        },
-        fallbacks=[CommandHandler("cancel", summary.cancel)],
-        allow_reentry=True
-    ))
-    
-    application.add_handler(ConversationHandler(
-        entry_points=[CommandHandler("search", search.search)],
-        states={
-            search.GET_QUERY: [MessageHandler(filters.TEXT & ~filters.COMMAND, search.process_search_query)],
-            search.PAGINATE: [
-                CallbackQueryHandler(search.paginate_search, pattern="^search_page_"),
-                CallbackQueryHandler(search.close_search, pattern="^search_close$"),
-                CallbackQueryHandler(search.start_edit, pattern="^edit_")
-            ],
-            search.EDIT_CHOICE: [
-                CallbackQueryHandler(search.handle_edit_choice, pattern="^edit_field_|^edit_save$|^edit_cancel$")
-            ],
-            search.EDIT_DESCRIPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, search.edit_description)],
-            search.EDIT_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, search.edit_amount)],
-            search.EDIT_CATEGORY: [MessageHandler(filters.TEXT & ~filters.COMMAND, search.edit_category)]
-        },
-        fallbacks=[CommandHandler("cancel", search.cancel)],
-        allow_reentry=True
-    ))
-    
-    application.add_handler(ConversationHandler(
-        entry_points=[CommandHandler("export", export.export_start)],
-        states={
-            export.CHOOSE_MONTH: [MessageHandler(filters.TEXT & ~filters.COMMAND, export.generate_csv)]
-        },
-        fallbacks=[CommandHandler("cancel", export.cancel)],
-        allow_reentry=True
-    ))
-    
-    # Budget Conversation Handler
-    budget_conversation = ConversationHandler(
-        entry_points=[
-            CommandHandler("budget", budget.start),
-            CallbackQueryHandler(budget.prompt_set_budget, pattern="^prompt_set_budget$")
-        ],
-        states={
-            budget.CHOOSE_ACTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, budget.handle_choice)],
-            budget.GET_BUDGET_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, budget.receive_budget_amount)]
-        },
-        fallbacks=[CommandHandler("cancel", budget.cancel)],
-        allow_reentry=True
-    )
-    application.add_handler(budget_conversation)
+# Transaction states
+TYPE, AMOUNT, DESCRIPTION, CATEGORY = range(4)
+
+# History states
+CHOICE, SUMMARY, WEEKLY, MONTHLY, YEARLY = range(5)
+
+# Settings states
+CHOICE, ADD_CATEGORY, DATABASE_ACTION, VIEW_CATEGORIES, DELETE_CATEGORIES, SET_CURRENCY, RESET_DATA, RESET_DATA_CONFIRM = range(
+    8)
+
+# Budget states
+CHOICE, MONTH_SELECTION, CATEGORY_SELECTION, AMOUNT_INPUT, CHANGE_CATEGORY, CHANGE_AMOUNT = range(
+    6)
+
 
 def main() -> None:
     application = ApplicationBuilder().token(BOT_TOKEN).build()
 
-    register_handler(application)
+    # Start the application
+    application.add_handler(CommandHandler("start", start_command))
 
-    # Schedule the daily job for budget prompts
-    # Runs every day at 9:00 AM (bot's local time)
-    application.job_queue.run_daily(jobs.check_monthly_budget_prompt, time=time(hour=9, minute=0))
-    
+    transaction_handler = ConversationHandler(
+        entry_points=[CommandHandler("transaction", start_transaction)],
+        states={
+            TYPE: [CallbackQueryHandler(type_handler)],
+            AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, amount_handler)],
+            DESCRIPTION: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND,
+                               description_handler)
+            ],
+            CATEGORY: [
+                CallbackQueryHandler(
+                    category_handler, pattern="^(?!back_to_description).*$"),
+                CallbackQueryHandler(
+                    back_handler, pattern="^back_to_description.*$"),
+            ],
+        },
+        fallbacks=[CommandHandler("cancel", cancel_transaction)],
+    )
+
+    history_handler = ConversationHandler(
+        entry_points=[CommandHandler("history", start_history)],
+        states={
+            CHOICE: [CallbackQueryHandler(history_choice)],
+            SUMMARY: [CallbackQueryHandler(summary_handler)],
+            WEEKLY: [CallbackQueryHandler(weekly_handler)],
+            MONTHLY: [CallbackQueryHandler(monthly_handler)],
+            YEARLY: [CallbackQueryHandler(yearly_handler)],
+        },
+        fallbacks=[CommandHandler("cancel", cancel_history)],
+    )
+
+    settings_handler = ConversationHandler(
+        entry_points=[CommandHandler("settings", start_settings)],
+        states={
+            CHOICE: [
+                CallbackQueryHandler(categories_handler)
+            ],
+            ADD_CATEGORY: [
+                CallbackQueryHandler(add_category)
+            ],
+            DATABASE_ACTION: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND,
+                               database_action),
+                CallbackQueryHandler(database_action)
+            ],
+            VIEW_CATEGORIES: [
+                CallbackQueryHandler(view_categories)
+            ],
+            DELETE_CATEGORIES: [
+                CallbackQueryHandler(delete_categories)
+            ],
+            SET_CURRENCY: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND,
+                               set_currency_handler)
+            ],
+            RESET_DATA_CONFIRM: [
+                CallbackQueryHandler(reset_data_confirm_handler)
+            ]
+        },
+        fallbacks=[CommandHandler("cancel", cancel_settings)],
+    )
+
+    budget_handler = ConversationHandler(
+        entry_points=[CommandHandler("budget", start_budget)],
+        states={
+            CHOICE: [CallbackQueryHandler(choice_handler)],
+            MONTH_SELECTION: [CallbackQueryHandler(month_selection_handler)],
+            CATEGORY_SELECTION: [CallbackQueryHandler(category_selection_handler)],
+            AMOUNT_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, amount_input_handler)],
+        },
+        fallbacks=[CommandHandler("cancel", cancel_budget)],
+    )
+
+    application.add_handler(transaction_handler)
+    application.add_handler(history_handler)
+    application.add_handler(settings_handler)
+    application.add_handler(budget_handler)
+
     application.run_polling()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     init_db()
     main()

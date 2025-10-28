@@ -1,18 +1,77 @@
-# 💸 ExpenTrax - Telegram Expense Tracker Bot
+# Expentrax - A Telegram Expense Tracking Bot
 
-A simple Telegram bot to track your expenses and income, view summaries, and export reports — all from your chat.
+This project is a complete rewrite of my previous Telegram bot, Expentrax. The goal is to build it from scratch without the use of any AI tools, demonstrating a deeper understanding of the underlying concepts and code. This project is for CS50's final project.
 
-## 🕶 Motivations
+> [!NOTE]  
+> This README is generated using Google Gemini and ChatGPT
 
-This bot was created to replace my old workflow for managing income and expenses. Previously, I used Google Sheets with a ready-made template to track my expenses. The advantage of using that was that I could access it on both my phone and laptop, and it synchronized nicely.
+---
 
-## ✅ Features
+## 🚧 Core Functionalities
 
-- Add expense and income entries
-- Choose from preset categories
-- View monthly/yearly summaries
-- Export data as CSV
-- Set budgets and preferences
+This checklist outlines the essential features required for a minimum viable product.
+
+- [x] **User Management**: The bot can uniquely identify and manage individual users.
+
+    - [x] Implemented a database schema to store user information.
+
+    - [x] Handled user authentication and data persistence.
+
+- [x] **Transaction Logging**: The bot can parse and record expense messages.
+    
+    - [x] Implemented custom keyboards for quick access to commands.
+
+    - [x] Added inline buttons for more dynamic interactions.
+
+    - [x] Integrated with a database to save transaction data.
+
+- [x] **Data Retrieval**: The bot can provide basic expense summaries.
+
+    - [x] Implemented a command to list recent transactions.
+
+    - [x] Implemented a command to show total expenses for a specific period (e.g., this month).
+
+- [ ] **Balance Checking**: Check your current balance (income-expense)
+
+    - [ ] Need a way to reset your balance
+
+    - [ ] Can also check the balance for each category 
+
+---
+
+## ✨ "Wow" Factors
+
+This checklist covers additional features to enhance the bot's functionality and demonstrate advanced skills.
+
+- [x] Custom Category Management: Users can manage their own expense categories.
+
+    - [x] Created a dedicated database table for user-defined categories.
+
+    - [x] Developed commands to add, edit, and delete categories.
+
+- [ ] Budgeting: Users can set and track budgets for different categories.
+
+    - [ ] Created a dedicated database table for budgets, linked to users and categories.
+
+    - [ ] Implemented a command for users to set a budget (e.g., /set_budget groceries 500).
+
+    - [ ] The bot provides a summary of spending against the budget.
+
+    - [ ] The bot can alert the user when they are nearing their budget limit.
+
+- [ ] Visual Reporting: The bot provides visual summaries of spending.
+
+    - [ ] Integrated a plotting library (e.g., Matplotlib) to create charts.
+
+    - [ ] The bot can send a visual report (e.g., a pie chart) of expenses by category.
+
+- [ ] Recurring Transactions: The bot can handle recurring expenses.
+
+    - [ ] Implemented a command to set up repeating transactions.
+
+    - [ ] Developed a scheduling mechanism to automatically add recurring expenses to the database.
+
+This checklist will serve as a clear roadmap for my development process and provide a great overview for anyone looking at this project.
 
 ---
 
@@ -22,6 +81,7 @@ This bot was created to replace my old workflow for managing income and expenses
 ```bash
 git clone https://github.com/DenHafiz69/expentrax.git
 cd expentrax
+git checkout no-ai-rewrite
 ```
 
 ### 2. Create virtual environment
@@ -47,41 +107,3 @@ BOT_TOKEN=your_telegram_bot_token
 ```bash
 python main.py
 ```
-
----
-
-## 🤖 Available Commands
-
-| Command        | Function                     |
-|----------------|------------------------------|
-| /add_expense   | Add an expense               |
-| /add_income    | Add an income                |
-| /view_expenses | View recent expenses         |
-| /summary       | Monthly/yearly summary       |
-| /budget        | Set or view your monthly budget |
-| /search        | Search transactions          |
-| /export        | Export data as CSV           |
-| /help          | Get help info                |
-<!-- | /settings      | Currency, timezone, etc.     | -->
-
----
-
-## 📁 Project Structure
-
-```
-handlers/         # Logic for expense, income, etc.
-helpers/          # Reusable helper functions
-config.py         # Settings, categories, constants
-main.py           # Bot setup and handler registration
-.env              # Secret token
-requirements.txt  # Python dependencies
-```
-
----
-
-## 📄 License
-
-This project is licensed under the **GNU General Public License v3.0**.  
-See the [LICENSE](LICENSE) file for details.
-
----
