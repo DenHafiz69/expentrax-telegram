@@ -29,6 +29,14 @@ from handlers.settings import (
     delete_categories,
     cancel_settings,
 )
+from handlers.budget import (
+    start_budget,
+    choice_handler,
+    month_selection_handler,
+    category_selection_handler,
+    amount_input_handler,
+    cancel_budget,
+)
 
 
 from telegram.ext import (
@@ -56,7 +64,12 @@ TYPE, AMOUNT, DESCRIPTION, CATEGORY = range(4)
 CHOICE, SUMMARY, WEEKLY, MONTHLY, YEARLY = range(5)
 
 # Settings states
-CHOICE, ADD_CATEGORY, DATABASE_ACTION, VIEW_CATEGORIES, DELETE_CATEGORIES = range(5)
+CHOICE, ADD_CATEGORY, DATABASE_ACTION, VIEW_CATEGORIES, DELETE_CATEGORIES = range(
+    5)
+
+# Budget states
+CHOICE, MONTH_SELECTION, CATEGORY_SELECTION, AMOUNT_INPUT, CHANGE_CATEGORY, CHANGE_AMOUNT = range(
+    6)
 
 
 def main() -> None:
@@ -71,10 +84,12 @@ def main() -> None:
             TYPE: [MessageHandler(filters.TEXT, type_handler)],
             AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, amount_handler)],
             DESCRIPTION: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, description_handler)
+                MessageHandler(filters.TEXT & ~filters.COMMAND,
+                               description_handler)
             ],
             CATEGORY: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, category_handler)
+                MessageHandler(filters.TEXT & ~filters.COMMAND,
+                               category_handler)
             ],
         },
         fallbacks=[CommandHandler("cancel", cancel_transaction)],
@@ -96,27 +111,43 @@ def main() -> None:
         entry_points=[CommandHandler("settings", start_settings)],
         states={
             CHOICE: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, categories_handler)
+                MessageHandler(filters.TEXT & ~filters.COMMAND,
+                               categories_handler)
             ],
             ADD_CATEGORY: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, add_category)
             ],
             DATABASE_ACTION: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, database_action)
+                MessageHandler(filters.TEXT & ~filters.COMMAND,
+                               database_action)
             ],
             VIEW_CATEGORIES: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, view_categories)
+                MessageHandler(filters.TEXT & ~filters.COMMAND,
+                               view_categories)
             ],
             DELETE_CATEGORIES: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, delete_categories)
+                MessageHandler(filters.TEXT & ~filters.COMMAND,
+                               delete_categories)
             ]
         },
         fallbacks=[CommandHandler("cancel", cancel_settings)],
     )
 
+    budget_handler = ConversationHandler(
+        entry_points=[CommandHandler("budget", start_budget)],
+        states={
+            CHOICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, choice_handler)],
+            MONTH_SELECTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, month_selection_handler)],
+            CATEGORY_SELECTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, category_selection_handler)],
+            AMOUNT_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, amount_input_handler)],
+        },
+        fallbacks=[CommandHandler("cancel", cancel_budget)],
+    )
+
     application.add_handler(transaction_handler)
     application.add_handler(history_handler)
     application.add_handler(settings_handler)
+    application.add_handler(budget_handler)
 
     application.run_polling()
 
