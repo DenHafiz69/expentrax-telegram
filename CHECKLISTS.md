@@ -49,11 +49,11 @@ This checklist covers additional features to enhance the bot's functionality and
 
     - [x] Developed commands to add, edit, and delete categories.
 
-- [ ] Budgeting: Users can set and track budgets for different categories.
+- [x] Budgeting: Users can set and track budgets for different categories.
 
-    - [ ] Created a dedicated database table for budgets, linked to users and categories.
+    - [x] Created a dedicated database table for budgets, linked to users and categories.
 
-    - [ ] Implemented a command for users to set a budget (e.g., /set_budget groceries 500).
+    - [x] Implemented a command for users to set a budget via /budget.
 
     - [ ] The bot provides a summary of spending against the budget.
 
@@ -65,11 +65,11 @@ This checklist covers additional features to enhance the bot's functionality and
 
     - [ ] The bot can send a visual report (e.g., a pie chart) of expenses by category.
 
-- [ ] Recurring Transactions: The bot can handle recurring expenses.
+- [x] Recurring Transactions: The bot can handle recurring expenses.
 
-    - [ ] Implemented a command to set up repeating transactions.
+    - [x] Implemented a command to set up repeating transactions.
 
-    - [ ] Developed a scheduling mechanism to automatically add recurring expenses to the database.
+    - [x] Developed a scheduling mechanism to automatically add recurring expenses to the database.
 
 This checklist will serve as a clear roadmap for my development process and provide a great overview for anyone looking at this project.
 
