@@ -39,6 +39,11 @@ class User(Base):
         cascade="all, delete-orphan"
     )
 
+    recurring_transactions: Mapped[List["RecurringTransaction"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+
     # Add this relationship to link to user's custom categories
     custom_categories: Mapped[List["CustomCategory"]] = relationship(
         back_populates="user",
@@ -122,6 +127,26 @@ class Budget(Base):
         return f"Budget(id={self.id}, user_id={self.user_id})"
 
 
+class RecurringTransaction(Base):
+    __tablename__ = 'recurring_transactions'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    type_of_transaction: Mapped[str] = mapped_column(String(10))
+    amount: Mapped[float] = mapped_column(Float)
+    description: Mapped[str] = mapped_column(Text)
+    category_id: Mapped[int] = mapped_column(Integer)
+    category_type: Mapped[str] = mapped_column(String(10))
+    frequency: Mapped[str] = mapped_column(String(10))
+    start_date: Mapped[datetime] = mapped_column(DateTime)
+    end_date: Mapped[Optional[datetime]] = mapped_column(DateTime)
+
+    user: Mapped["User"] = relationship(
+        back_populates="recurring_transactions")
+
+    def __repr__(self):
+        return f"RecurringTransaction(id={self.id}, user_id={self.user_id})"
+
+
 # Create tables
 Base.metadata.create_all(engine)
 
@@ -160,6 +185,34 @@ def save_transaction(
 
     with Session(engine) as session:
         session.add(transaction)
+        session.commit()
+
+
+def save_recurring_transaction(
+    user_id: int,
+    type_of_transaction: str,
+    amount: float,
+    description: str,
+    category_id: int,
+    category_type: str,
+    frequency: str,
+    start_date: datetime,
+    end_date: Optional[datetime] = None
+):
+    recurring_transaction = RecurringTransaction(
+        user_id=user_id,
+        type_of_transaction=type_of_transaction,
+        amount=amount,
+        description=description,
+        category_id=category_id,
+        category_type=category_type,
+        frequency=frequency,
+        start_date=start_date,
+        end_date=end_date
+    )
+
+    with Session(engine) as session:
+        session.add(recurring_transaction)
         session.commit()
 
 

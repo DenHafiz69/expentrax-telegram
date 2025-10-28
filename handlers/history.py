@@ -25,8 +25,8 @@ CHOICE, SUMMARY, WEEKLY, MONTHLY, YEARLY = range(5)
 async def start_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     keyboard = [
         [
-            InlineKeyboardButton("Recent", callback_data="recent"),
-            InlineKeyboardButton("Summary", callback_data="summary"),
+            InlineKeyboardButton("Recent ✅", callback_data="recent"),
+            InlineKeyboardButton("Summary 📊", callback_data="summary"),
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -35,7 +35,7 @@ async def start_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
                 update.message.from_user.first_name)
 
     await update.message.reply_text(
-        "What would you like to do?",
+        "📋 Welcome to the transaction history! What would you like to do?",
         reply_markup=reply_markup,
     )
 
@@ -66,7 +66,7 @@ async def history_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         reply_markup = InlineKeyboardMarkup(keyboard)
 
         await query.edit_message_text(
-            text="Please specify a summary period either 'Weekly', 'Monthly', or 'Yearly'.",
+            text="📅 Please specify a summary period:",
             reply_markup=reply_markup
         )
 
@@ -74,8 +74,8 @@ async def history_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     else:
         await query.edit_message_text(
-            text="Invalid choice. Please select 'Recent' or 'Summary'.\n"
-            "Weekly and Monthly would be summaries instead of individual transaction."
+            text="❓ Oops! Please select 'Recent' or 'Summary'.\n"
+            "📝 Note: Weekly, Monthly, and Yearly options show summaries instead of individual transactions."
         )
         return CHOICE
 
@@ -94,20 +94,20 @@ async def recent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     if not transactions:
         await query.edit_message_text(
-            text="No recent transactions found."
+            text="🔍 No recent transactions found. Try adding some transactions first!"
         )
 
         return ConversationHandler.END
 
-    message = "Here are your recent transactions:\n\n"
+    message = "📄 *Here are your recent transactions:*\n\n"
     for transaction in transactions:
-        type_prefix = "🟩 Income" if transaction.type_of_transaction == "income" else "🟥 Expense"
+        type_prefix = "💰 Income" if transaction.type_of_transaction == "income" else "💸 Expense"
 
         message += (
-            f"{transaction.timestamp.strftime('%Y-%m-%d')} | "
+            f"📅 {transaction.timestamp.strftime('%Y-%m-%d')} | "
             f"{type_prefix} | "
-            f"RM {transaction.amount:.2f} | "
-            f"*{get_category_name_by_id(transaction.category_id)}* | "
+            f"💵 RM {transaction.amount:.2f} | "
+            f"🏷️ *{get_category_name_by_id(transaction.category_id)}* | "
             f"{transaction.description}\n"
         )
 
@@ -119,7 +119,7 @@ async def recent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 
 async def summary_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Show monthly transactions by the user"""
+    """Show summary transactions by the user"""
     query = update.callback_query
     await query.answer()
     summary_choice = query.data
@@ -140,12 +140,12 @@ async def summary_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         for i in range(0, len(periods), row_size)
     ]
     keyboard.append([InlineKeyboardButton(
-        "Back", callback_data="back_to_summary")])
+        "⬅️ Back", callback_data="back_to_summary")])
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     if not periods:
         await query.edit_message_text(
-            text=f"No {summary_choice} summary found."
+            text=f"🔍 No {summary_choice} summary found. Try adding transactions first!"
         )
 
         return ConversationHandler.END
@@ -153,7 +153,7 @@ async def summary_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     elif summary_choice == "weekly":
 
         await query.edit_message_text(
-            text="Please choose the week that you want:",
+            text="📅 Please choose the week you want to view:",
             reply_markup=reply_markup
         )
 
@@ -162,7 +162,7 @@ async def summary_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     elif summary_choice == "monthly":
 
         await query.edit_message_text(
-            text="Please choose the month that you want:",
+            text="📅 Please choose the month you want to view:",
             reply_markup=reply_markup
         )
 
@@ -171,7 +171,7 @@ async def summary_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     else:
 
         await query.edit_message_text(
-            text="Please choose the year that you want:",
+            text="📅 Please choose the year you want to view:",
             reply_markup=reply_markup
         )
 
@@ -197,9 +197,15 @@ async def weekly_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     logger.info("Weekly total: %s, User: %s", week_total, user.first_name)
 
+    net_amount = week_total.total_income - week_total.total_expense
+    emoji = "📈" if net_amount >= 0 else "📉"
+
     await query.edit_message_text(
-        text=f"Total income: RM {week_total.total_income:.2f}\n"
-        f"Total expense: RM {week_total.total_expense:.2f}"
+        text=f"📊 *Weekly Summary ({year_choice} Week {week_choice})*\n\n"
+        f"💰 Total Income: *RM {week_total.total_income:.2f}*\n"
+        f"💸 Total Expense: *RM {week_total.total_expense:.2f}*\n"
+        f"💡 Net: *RM {net_amount:.2f}* {emoji}",
+        parse_mode='Markdown'
     )
 
     return ConversationHandler.END
@@ -224,9 +230,15 @@ async def monthly_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     logger.info("Monthly total: %s, User: %s", month_total, user.first_name)
 
+    net_amount = month_total.total_income - month_total.total_expense
+    emoji = "📈" if net_amount >= 0 else "📉"
+
     await query.edit_message_text(
-        text=f"Total income: RM {month_total.total_income:.2f}\n"
-        f"Total expense: RM {month_total.total_expense:.2f}"
+        text=f"📊 *Monthly Summary ({month_choice} {year_choice})*\n\n"
+        f"💰 Total Income: *RM {month_total.total_income:.2f}*\n"
+        f"💸 Total Expense: *RM {month_total.total_expense:.2f}*\n"
+        f"💡 Net: *RM {net_amount:.2f}* {emoji}",
+        parse_mode='Markdown'
     )
 
     return ConversationHandler.END
@@ -248,9 +260,15 @@ async def yearly_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     logger.info("Year total: %s, User: %s", year_total, user.first_name)
 
+    net_amount = year_total.total_income - year_total.total_expense
+    emoji = "📈" if net_amount >= 0 else "📉"
+
     await query.edit_message_text(
-        text=f"Total income: RM {year_total.total_income:.2f}\n"
-        f"Total expense: RM {year_total.total_expense:.2f}"
+        text=f"📊 *Yearly Summary ({year_choice})*\n\n"
+        f"💰 Total Income: *RM {year_total.total_income:.2f}*\n"
+        f"💸 Total Expense: *RM {year_total.total_expense:.2f}*\n"
+        f"💡 Net: *RM {net_amount:.2f}* {emoji}",
+        parse_mode='Markdown'
     )
 
     return ConversationHandler.END
@@ -266,16 +284,16 @@ async def back_history_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     elif query.data == "back_to_summary":
         keyboard = [
             [
-                InlineKeyboardButton("Weekly", callback_data="weekly"),
-                InlineKeyboardButton("Monthly", callback_data="monthly"),
-                InlineKeyboardButton("Yearly", callback_data="yearly"),
+                InlineKeyboardButton("Weekly 📅", callback_data="weekly"),
+                InlineKeyboardButton("Monthly 📅", callback_data="monthly"),
+                InlineKeyboardButton("Yearly 📅", callback_data="yearly"),
             ],
-            [InlineKeyboardButton("Back", callback_data="start_history")],
+            [InlineKeyboardButton("⬅️ Back", callback_data="start_history")],
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
         await query.edit_message_text(
-            text="Please specify a summary period either 'Weekly', 'Monthly', or 'Yearly'.",
+            text="📅 Please specify a summary period:",
             reply_markup=reply_markup
         )
 
@@ -288,7 +306,7 @@ async def cancel_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     logger.info("User %s canceled the conversation.", user.first_name)
 
     await update.message.reply_text(
-        "Transaction cancelled."
+        "❌ History operation cancelled."
     )
 
     return ConversationHandler.END

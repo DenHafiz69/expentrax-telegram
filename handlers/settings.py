@@ -30,21 +30,23 @@ CHOICE, ADD_CATEGORY, DATABASE_ACTION, VIEW_CATEGORIES, DELETE_CATEGORIES, SET_C
 async def start_settings(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     keyboard = [
         [
-            InlineKeyboardButton("Add Category", callback_data="add_category"),
             InlineKeyboardButton(
-                "View Categories", callback_data="view_categories"),
-            InlineKeyboardButton("Delete Categories",
+                "➕ Add Category", callback_data="add_category"),
+            InlineKeyboardButton(
+                "👁️ View Categories", callback_data="view_categories"),
+            InlineKeyboardButton("🗑️ Delete Categories",
                                  callback_data="delete_categories"),
         ],
         [
-            InlineKeyboardButton("Set Currency", callback_data="set_currency"),
-            InlineKeyboardButton("Reset Data", callback_data="reset_data"),
+            InlineKeyboardButton(
+                "💵 Set Currency", callback_data="set_currency"),
+            InlineKeyboardButton("🔄 Reset Data", callback_data="reset_data"),
         ],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.message.reply_text(
-        "What would you like to do?",
+        "⚙️ Welcome to Settings! What would you like to do?",
         reply_markup=reply_markup,
     )
 
@@ -58,10 +60,10 @@ async def categories_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     keyboard = [
         [
-            InlineKeyboardButton("Expense", callback_data="expense"),
-            InlineKeyboardButton("Income", callback_data="income"),
+            InlineKeyboardButton("💸 Expense", callback_data="expense"),
+            InlineKeyboardButton("💰 Income", callback_data="income"),
         ],
-        [InlineKeyboardButton("Back", callback_data="start_settings")],
+        [InlineKeyboardButton("🔙 Back", callback_data="start_settings")],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -88,17 +90,17 @@ async def categories_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     elif choice == "set_currency":
         await query.edit_message_text(
-            text="Please enter the currency symbol you would like to use (e.g., $, €, £, ¥, RM)."
+            text="💱 Please enter the currency symbol you would like to use (e.g., $, €, £, ¥, RM)."
         )
         return SET_CURRENCY
 
     elif choice == "reset_data":
         keyboard = [
             [
-                InlineKeyboardButton("Yes, reset my data",
+                InlineKeyboardButton("✅ Yes, reset my data",
                                      callback_data="confirm_reset"),
                 InlineKeyboardButton(
-                    "No, cancel", callback_data="cancel_reset"),
+                    "❌ No, cancel", callback_data="cancel_reset"),
             ]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -110,7 +112,7 @@ async def categories_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     else:
         await query.edit_message_text(
-            text="Invalid choice. Please select an option from the menu."
+            text="❌ Invalid choice. Please select an option from the menu."
         )
         return CHOICE
 
@@ -123,8 +125,8 @@ async def add_category(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     context.user_data['type_of_transaction'] = type_of_transaction
 
     await query.edit_message_text(
-        text=f"Okay, you're adding an '{type_of_transaction}' category.\n\n"
-        "What name would you like to give it?"
+        text=f"🆕 Adding a new {type_of_transaction} category!\n\n"
+        "What name would you like to give it? 💡"
     )
 
     return DATABASE_ACTION
@@ -145,7 +147,7 @@ async def delete_categories(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         for row in list_chunker(categories, 3)
     ]
     keyboard.append([InlineKeyboardButton(
-        "Back", callback_data="back_to_delete_choice")])
+        "🔙 Back", callback_data="back_to_delete_choice")])
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await query.edit_message_text(
@@ -166,7 +168,7 @@ async def database_action(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
         if category_name in get_categories_name(type_of_transaction.lower(), user_id):
             await update.message.reply_text(
-                f"Category {category_name} already exists. Please choose another name.",
+                f"⛔️ Category '{category_name}' already exists for {type_of_transaction}. Please choose another name.",
             )
             return DATABASE_ACTION
 
@@ -201,9 +203,9 @@ async def view_categories(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     choice = query.data
     categories = get_categories_name(choice.lower())
 
-    message = "Here are the expense categories:\n\n"
+    message = f"📋 Here are your {choice.lower()} categories:\n\n"
     for category in categories:
-        message += f"{category}\n"
+        message += f"• {category}\n"
 
     await query.edit_message_text(
         text=f"{message}"
@@ -218,7 +220,7 @@ async def set_currency_handler(update: Update, context: ContextTypes.DEFAULT_TYP
 
     if len(currency_symbol) > 5 or len(currency_symbol) < 1:
         await update.message.reply_text(
-            "Invalid currency symbol. Please enter a symbol between 1 and 5 characters."
+            "❌ Invalid currency symbol. Please enter a symbol between 1 and 5 characters."
         )
         return SET_CURRENCY
 
@@ -244,7 +246,7 @@ async def reset_data_confirm_handler(update: Update, context: ContextTypes.DEFAU
         return ConversationHandler.END
     else:
         await query.edit_message_text(
-            text="Data reset cancelled."
+            text="❌ Data reset cancelled."
         )
         return ConversationHandler.END
 
@@ -259,14 +261,14 @@ async def back_settings_handler(update: Update, context: ContextTypes.DEFAULT_TY
     elif query.data == "back_to_delete_choice":
         keyboard = [
             [
-                InlineKeyboardButton("Expense", callback_data="expense"),
-                InlineKeyboardButton("Income", callback_data="income"),
+                InlineKeyboardButton("💸 Expense", callback_data="expense"),
+                InlineKeyboardButton("💰 Income", callback_data="income"),
             ],
-            [InlineKeyboardButton("Back", callback_data="start_settings")],
+            [InlineKeyboardButton("🔙 Back", callback_data="start_settings")],
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(
-            text="Which would you like to delete?",
+            text="🗑️ Which category would you like to delete?",
             reply_markup=reply_markup
         )
         return DELETE_CATEGORIES
@@ -279,7 +281,7 @@ async def cancel_settings(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     logger.info("User %s canceled the conversation.", user.first_name)
 
     await update.message.reply_text(
-        "Transaction cancelled."
+        "❌ Settings operation cancelled."
     )
 
     return ConversationHandler.END
