@@ -120,6 +120,7 @@ def main() -> None:
             ],
         },
         fallbacks=[CommandHandler("cancel", cancel_transaction)],
+        per_message=False,
     )
 
     recurring_transaction_handler = ConversationHandler(
@@ -135,6 +136,7 @@ def main() -> None:
             RECURRING_END_DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, end_date_handler)],
         },
         fallbacks=[CommandHandler("cancel", cancel_recurring_transaction)],
+        per_message=False,
     )
 
     history_handler = ConversationHandler(
@@ -147,6 +149,7 @@ def main() -> None:
             YEARLY: [CallbackQueryHandler(yearly_handler)],
         },
         fallbacks=[CommandHandler("cancel", cancel_history)],
+        per_message=False,
     )
 
     settings_handler = ConversationHandler(
@@ -178,6 +181,7 @@ def main() -> None:
             ]
         },
         fallbacks=[CommandHandler("cancel", cancel_settings)],
+        per_message=False,
     )
 
     budget_handler = ConversationHandler(
@@ -189,6 +193,7 @@ def main() -> None:
             AMOUNT_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, amount_input_handler)],
         },
         fallbacks=[CommandHandler("cancel", cancel_budget)],
+        per_message=False,
     )
 
     application.add_handler(transaction_handler)
