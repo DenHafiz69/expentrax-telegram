@@ -1,6 +1,6 @@
-from datetime import datetime, timedelta
-import logging
-from utils.misc import list_chunker, is_valid_currency
+from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from telegram.ext import ContextTypes, ConversationHandler
+
 from utils.database import (
     get_categories_name,
     get_category_id,
@@ -10,17 +10,10 @@ from utils.database import (
     get_spend_by_month,
     get_category_name_by_id,
 )
-import calendar
-from datetime import date
-from utils.misc import list_chunker
-from utils.database import add_custom_category, get_categories_name, get_custom_categories_name_and_id, get_category_id, delete_category
-from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
-from telegram.ext import ContextTypes, ConversationHandler
-<< << << < HEAD
-== == == =
+from utils.misc import list_chunker, is_valid_currency
 
->>>>>> > aabfb06(Completed budget functionality)
-
+import logging
+from datetime import datetime, timedelta
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
@@ -44,19 +37,11 @@ async def start_budget(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     await update.message.reply_text(
         "Welcome to the budget manager! What would you like to do?",
         reply_markup=ReplyKeyboardMarkup(
-<< << << < HEAD
-            reply_keyboard,
-            resize_keyboard=True,
-            one_time_keyboard=True,
-            input_field_placeholder="Choose 'Set', 'Change', or 'Check Balanance'"
-        )
-== == == =
             reply_keyboard,
             resize_keyboard=True,
             one_time_keyboard=True,
             input_field_placeholder="Set/Change or Check budget"
         ),
->>>>>> > aabfb06(Completed budget functionality)
     )
 
     return CHOICE
@@ -64,45 +49,19 @@ async def start_budget(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
 async def choice_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Handles the user's main choice."""
-    choice= update.message.text
-    context.user_data['budget_choice']= choice
+    choice = update.message.text
+    context.user_data['budget_choice'] = choice
 
-<< << << < HEAD
-    if choice == "Set":
-        # Query database to get this and next month name
-        today= date.today()
-        current_month= calendar.month_name[today.month]
-
-        if today.month == 12:
-            next_month= calendar.month_name[1]
-        else:
-            next_month= calendar.month_namep[today.month + 1]
-
-        keyboard_markup= [[current_month, next_month]]
-
-        # Ask the user which month he want to set for
-        await update.message.reply_text(
-            "Which month do you want to set the budget for?",
-
-        )
-        # Query database and ask user which category and the budget amount
-        # Maybe can create function to copy from last month too
-        #
-    elif choice == "Change":
-        # Same process as Set
-        # Except for the copy from last month
-== == == =
     if choice == "Set/Change":
-        today= datetime.now()
-        next_month= today + timedelta(days=31)
->> >>>> > aabfb06(Completed budget functionality)
+        today = datetime.now()
+        next_month = today + timedelta(days=31)
 
-        reply_keyboard= [
+        reply_keyboard = [
             [today.strftime("%B %Y"), next_month.strftime("%B %Y")]]
 
         await update.message.reply_text(
             "Which month are you setting or changing the budget for?",
-            reply_markup = ReplyKeyboardMarkup(
+            reply_markup=ReplyKeyboardMarkup(
                 reply_keyboard,
                 resize_keyboard=True,
                 one_time_keyboard=True,
@@ -193,9 +152,7 @@ async def check_budget_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     spends = get_spend_by_month(user_id, today.month, today.year)
 
     if not budgets:
-        await update.message.reply_text(
-            "You have not set any budgets for this month.",
-            reply_markup=ReplyKeyboardRemove())
+        await update.message.reply_text("You have not set any budgets for this month.")
         return
 
     message = f"📊 *Budget Status for {today.strftime('%B %Y')}*\n\n"
@@ -225,7 +182,7 @@ async def check_budget_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     message += f"  - Total Spent: RM {total_spent:.2f}\n"
     message += f"  - Total Remaining: RM {total_remaining:.2f}\n"
 
-    await update.message.reply_text(message, parse_mode='Markdown', reply_markup=ReplyKeyboardRemove())
+    await update.message.reply_text(message, parse_mode='Markdown')
 
 
 async def cancel_budget(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
