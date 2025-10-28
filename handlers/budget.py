@@ -1,4 +1,4 @@
-from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ContextTypes, ConversationHandler
 
 from utils.database import (
@@ -32,16 +32,18 @@ EXPENSE_CATEGORIES = list_chunker(
 
 async def start_budget(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Starts the budget conversation."""
-    reply_keyboard = [["Set/Change", "Check"]]
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                "Set/Change", callback_data="set_change_budget"),
+            InlineKeyboardButton("Check", callback_data="check_budget"),
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.message.reply_text(
         "Welcome to the budget manager! What would you like to do?",
-        reply_markup=ReplyKeyboardMarkup(
-            reply_keyboard,
-            resize_keyboard=True,
-            one_time_keyboard=True,
-            input_field_placeholder="Set/Change or Check budget"
-        ),
+        reply_markup=reply_markup,
     )
 
     return CHOICE
@@ -49,34 +51,43 @@ async def start_budget(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
 async def choice_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Handles the user's main choice."""
-    choice = update.message.text
+    query = update.callback_query
+    await query.answer()
+    choice = query.data
+
     context.user_data['budget_choice'] = choice
 
-    if choice == "Set/Change":
+    if choice == "set_change_budget":
         today = datetime.now()
         next_month = today + timedelta(days=31)
 
-        reply_keyboard = [
-            [today.strftime("%B %Y"), next_month.strftime("%B %Y")]]
+        keyboard = [
+            [
+                InlineKeyboardButton(today.strftime(
+                    "%B %Y"), callback_data=today.strftime("%B %Y")),
+                InlineKeyboardButton(next_month.strftime(
+                    "%B %Y"), callback_data=next_month.strftime("%B %Y")),
+            ],
+            [InlineKeyboardButton("Back", callback_data="start_budget")],
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
 
-        await update.message.reply_text(
-            "Which month are you setting or changing the budget for?",
-            reply_markup=ReplyKeyboardMarkup(
-                reply_keyboard,
-                resize_keyboard=True,
-                one_time_keyboard=True,
-            ),
+        await query.edit_message_text(
+            text="Which month are you setting or changing the budget for?",
+            reply_markup=reply_markup,
         )
         return MONTH_SELECTION
 
-    elif choice == "Check":
+    elif choice == "check_budget":
         await check_budget_handler(update, context)
         return ConversationHandler.END
 
 
 async def month_selection_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Handles month selection for setting/changing budget."""
-    selected_month_str = update.message.text
+    query = update.callback_query
+    await query.answer()
+    selected_month_str = query.data
     month, year = selected_month_str.split()
 
     month_number = datetime.strptime(month, "%B").month
@@ -84,24 +95,31 @@ async def month_selection_handler(update: Update, context: ContextTypes.DEFAULT_
     context.user_data['budget_month'] = month_number
     context.user_data['budget_year'] = int(year)
 
-    await update.message.reply_text(
-        "Please select a category to set or change the budget for.",
-        reply_markup=ReplyKeyboardMarkup(
-            EXPENSE_CATEGORIES,
-            resize_keyboard=True,
-            one_time_keyboard=True,
-        ),
+    keyboard = [
+        [InlineKeyboardButton(category, callback_data=category)
+         for category in row]
+        for row in EXPENSE_CATEGORIES
+    ]
+    keyboard.append([InlineKeyboardButton(
+        "Back", callback_data="back_to_month_selection")])
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await query.edit_message_text(
+        text="Please select a category to set or change the budget for.",
+        reply_markup=reply_markup,
     )
     return CATEGORY_SELECTION
 
 
 async def category_selection_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Handles category selection and asks for the amount."""
-    category_name = update.message.text
+    query = update.callback_query
+    await query.answer()
+    category_name = query.data
     context.user_data['budget_category_name'] = category_name
 
-    await update.message.reply_text(
-        f"What is the budget amount for *{category_name}*?",
+    await query.edit_message_text(
+        text=f"What is the budget amount for *{category_name}*?",
         parse_mode='Markdown'
     )
     return AMOUNT_INPUT
@@ -135,8 +153,7 @@ async def amount_input_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         f"✅ Budget for *{category_name}* in "
         f"*{datetime(context.user_data['budget_year'], context.user_data['budget_month'], 1).strftime('%B %Y')}* "
         f"has been set to *RM {context.user_data['budget_amount']:.2f}*.",
-        parse_mode='Markdown',
-        reply_markup=ReplyKeyboardRemove()
+        parse_mode='Markdown'
     )
 
     logger.info("Budget set for %s by %s", category_name, user.first_name)
@@ -152,7 +169,7 @@ async def check_budget_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     spends = get_spend_by_month(user_id, today.month, today.year)
 
     if not budgets:
-        await update.message.reply_text("You have not set any budgets for this month.")
+        await update.callback_query.edit_message_text(text="You have not set any budgets for this month.")
         return
 
     message = f"📊 *Budget Status for {today.strftime('%B %Y')}*\n\n"
@@ -182,7 +199,36 @@ async def check_budget_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     message += f"  - Total Spent: RM {total_spent:.2f}\n"
     message += f"  - Total Remaining: RM {total_remaining:.2f}\n"
 
-    await update.message.reply_text(message, parse_mode='Markdown')
+    await update.callback_query.edit_message_text(text=message, parse_mode='Markdown')
+
+
+async def back_budget_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Handles the back button in the budget conversation."""
+    query = update.callback_query
+    await query.answer()
+
+    if query.data == "start_budget":
+        return await start_budget(update, context)
+    elif query.data == "back_to_month_selection":
+        today = datetime.now()
+        next_month = today + timedelta(days=31)
+
+        keyboard = [
+            [
+                InlineKeyboardButton(today.strftime(
+                    "%B %Y"), callback_data=today.strftime("%B %Y")),
+                InlineKeyboardButton(next_month.strftime(
+                    "%B %Y"), callback_data=next_month.strftime("%B %Y")),
+            ],
+            [InlineKeyboardButton("Back", callback_data="start_budget")],
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        await query.edit_message_text(
+            text="Which month are you setting or changing the budget for?",
+            reply_markup=reply_markup,
+        )
+        return MONTH_SELECTION
 
 
 async def cancel_budget(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -191,7 +237,7 @@ async def cancel_budget(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     logger.info("User %s canceled the budget conversation.", user.first_name)
 
     await update.message.reply_text(
-        "Budget operation cancelled.", reply_markup=ReplyKeyboardRemove()
+        "Budget operation cancelled."
     )
 
     return ConversationHandler.END
