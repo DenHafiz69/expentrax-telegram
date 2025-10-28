@@ -1,76 +1,39 @@
-# Expentrax - Den Hafiz's Final Project for CS50
+# Expentrax: Personal Finance Telegram Bot
 
-### Your personal, fast, and simple finance manager. Track income and expenses instantly right in Telegram.
+I built Expentrax, a personal finance management tool, as a Telegram bot to offer a simple, fast, and highly accessible way for me to track my income and expenses. As my final project for CS50, the bot was born from my personal need to overcome the limitations of existing financial tracking methods. It represents a practical solution for anyone seeking a streamlined, no-frills approach to financial awareness, leveraging the convenience of a messaging platform that millions of people, including myself, already use daily. This project also served as a significant learning experience for me, enabling my transition from a background in Physics to a career in software development by building a full-featured application from the ground up.
 
 ## The Problem
 
-For the past two years, I've relied on Google Sheets to track personal income and expenses, aiming to understand spending patterns and maintain financial awareness. It's accessible on laptop and phone with seamless sync. However, dedicated finance apps often fall short: many are platform-specific (Android/iOS only), subscription-based with locked features, or bloated with unnecessary complexities like investment tracking or advanced charting that clutter the interface and aren't needed for basic tracking.
+For two years, I relied on Google Sheets for my personal financial tracking. While functional and accessible across my devices, this method was not without its drawbacks. My exploration of dedicated finance applications revealed a landscape of tools that were often ill-suited for my simple needs. These applications typically fell into three problematic categories. First, many of the most effective apps were platform-specific, available only on either Android or iOS, creating an inconvenient barrier. Second, powerful features in many applications were locked behind recurring subscription fees, making them a costly option for basic expense tracking. Finally, a significant number of apps suffered from feature bloat, overwhelming me with complex functionalities such as investment portfolio management, loan amortization calculators, and advanced financial charting. These superfluous features cluttered the interface and detracted from the core task of simple income and expense logging.
 
 ## The Solution
 
-In Malaysia, WhatsApp dominates communication, but my wife and I prefer Telegram for its features. With Telegram already installed by millions, its multi-device sync, cloud storage, and powerful bot API make it ideal. A Telegram bot eliminates the need for another app; users interact via an existing chat. I chose a bot over a web app for instant access by clicking a chat, allowing pinning for quick use.
+I identified a more elegant solution by looking at the tools I already used. In Malaysia, while WhatsApp is the dominant messaging app, my wife and I prefer Telegram for its robust features, including seamless multi-device synchronization, cloud storage, and a powerful bot API. I realized that my financial tool didn't need to be a standalone application. Instead, it could be integrated into an existing, widely-used platform.
 
-## Personal Motivation
+A Telegram bot was the perfect answer. This approach eliminates the need for users to download, install, and manage yet another application on their phones. I can interact with my finance tracker directly within a chat interface I am already familiar with and likely have open throughout the day. For ease of access, I can pin the bot to the top of my chat list, making it instantly available. This design choice prioritizes user convenience and reduces friction, making the habit of tracking finances easier to maintain.
 
-As a Physics graduate transitioning to software development, this project offered hands-on learning in practical skills: interacting with third-party APIs (Telegram Bot API), database design and management, asynchronous programming for responsiveness, full-stack bot development, and writing clean, modular code.
+## Core Features: Focus on Simplicity and User Experience
 
-## Core Features
+I designed the minimum viable product (MVP) for Expentrax based on my own experience with manual tracking in Google Sheets, focusing on essential, high-impact features.
 
-Drawing from Google Sheets usage, I identified essential MVP features:
+- **Transaction Logging:** The primary function is handled by the `/transactions` command, which initiates a guided conversation to log either income or an expense. The bot prompts for the amount and category, making the process quick and straightforward.
+- **Modern User Interface:** A key design decision was my use of `InlineKeyboardButton` for user interactions, such as selecting a category. This presents clean, clickable buttons directly within the chat message, offering a superior user experience compared to the older `ReplyKeyboardMarkup`, which clutters the user's keyboard and makes the interaction feel clunky.
+- **Financial History and Summaries:** With the `/history` command, I can review my recent transactions or request summaries of my financial activity, broken down by week, month, or year. This provides valuable insights into my spending habits over time.
+- **User Customization:** The `/settings` command serves as a central hub for personalization. Here, I can add my own custom spending categories, change my preferred currency, or reset my data if I wish to start over.
 
-- **Transaction Logging:** Use `/transactions` to log expenses or income. The bot guides through amount and category selection via a simple process.
-- **User-Friendly Interface:** Employ `InlineKeyboardButton` for modern, clickable category selection, avoiding cluttered keyboards and messy messaging.
-- **History & Summaries:** `/history` provides recent transactions or summaries by week, month, or year.
-- **User Settings:** `/settings` centralizes management of custom categories, currency preferences, and data resets.
+## Technical Architecture and Design Decisions
 
-## Technical Architecture
+I built Expentrax with a modular architecture to ensure a clean separation of concerns, making the codebase readable, maintainable, and scalable.
 
-The project uses modular structure for separation of concerns, enhancing readability, debugging, and expansion.
+- **`main.py`**: This is the entry point of the application. It loads the bot token from an environment file, initializes the bot using the `python-telegram-bot` library, registers all the command handlers from the `/handlers` directory, and starts the bot's polling loop to listen for user messages.
+- **`./handlers`**: This directory contains the logic for each user-facing command, with each file dedicated to a specific feature (e.g., `transaction.py`, `history.py`, `settings.py`). This separation keeps the main file clean and organized. The `transaction.py` handler is the most complex, utilizing `ConversationHandler` to manage the multi-step process of logging a transaction.
+- **`./utils/database.py`**: To keep the handlers focused on user interaction, I abstracted all database logic into this utility file. It uses **SQLAlchemy**, an Object-Relational Mapper (ORM), which allows the application to interact with the database using Python objects instead of raw SQL queries. This improves code readability, security, and maintainability. The database schema includes tables for users, default and custom categories, transactions, budgets, and recurring transactions.
+- **Database Choice**: I chose **SQLite** for this project because it is serverless and stores the entire database in a single file, making it incredibly easy for development and deployment in small-to-medium-scale applications. My use of SQLAlchemy means that if the bot's user base grows, the backend can be migrated to a more robust database like PostgreSQL with minimal changes to the application code.
+- **Framework**: I chose the `python-telegram-bot` library for its active community support, comprehensive documentation, and powerful features like `ConversationHandler` and `JobQueue`, which are essential for creating a responsive and interactive bot.
 
-### `main.py`
-This entry point handles:
-1. Loading `BOT_TOKEN` from `.env` via `dotenv`.
-2. Initializing `ApplicationBuilder` from `python-telegram-bot`.
-3. Registering handlers from `/handlers` for commands like `/start`.
-4. Starting the event loop with `application.run_polling()` to listen for messages.
+## Future Plans
 
-### `./handlers`
-Contains command logic, keeping `main.py` organized. Each file handles a feature:
+I have a clear roadmap for future improvements that will add more value for users:
 
-- **`start.py`**: Manages `/start` and `/help`, sending welcome messages and command lists.
-- **`transaction.py`**: Core handler for `/transactions`, using `ConversationHandler` for multi-step income/expense logging, including amount, category (default/custom), and optional descriptions.
-- **`history.py`**: Powers `/history`, offering options like "Recent Transactions" or "Monthly Summary," fetching data from `utils/database.py` and formatting responses.
-- **`settings.py`**: Drives `/settings` with inline menus for "Manage Custom Categories," "Change Currency," or "Reset All Data," routing to sub-functions.
-- **`budget.py`**: Handles budget commands like `/set_budget`, `/view_budgets`, and `/delete_budget`, storing/retrieving data and comparing against transactions.
-- **`recurring.py`**: Manages recurring transactions (e.g., rent), with commands like `/add_recurring` and `/list_recurring`, potentially using `JobQueue` for automatic logging.
-
-### `./utils`
-Abstracts complex logic, especially database interactions.
-
-- **`database.py`**: Manages SQLite via SQLAlchemy ORM for readable, secure operations. Schema includes:
-  - `users`: Telegram ID and settings (e.g., currency).
-  - `default_categories`: Global categories like "Food," "Transport."
-  - `custom_categories`: User-specific categories linked by `user_id`.
-  - `transactions`: Core table with amount, type (income/expense), and foreign keys to user and category.
-  - `budget`: User/category budget data.
-  - `recurring_transactions`: Recurring transaction details.
-
-### `requirements.txt`
-Lists dependencies: `python-telegram-bot` for bot framework, `SQLAlchemy` for ORM, `python-dotenv` for environment variables.
-
-## Design Decisions
-
-- **Database: SQLite vs. PostgreSQL/MySQL**  
-  SQLite's simplicity (single-file, serverless) suits development and small apps. SQLAlchemy abstracts backend, enabling easy migration to PostgreSQL if needed.
-
-- **Framework: `python-telegram-bot`**  
-  Chosen for active support, documentation, and features like `ConversationHandler` and `JobQueue`, with strong async support.
-
-- **Interface: `InlineKeyboardButton` vs. `ReplyKeyboardMarkup`**  
-  Opted for inline buttons for cleaner, faster UX within chat messages, avoiding keyboard replacement and extra messages.
-
-## Future Improvements
-
-- **Visual Reports:** Integrate `matplotlib` for pie charts of spending by category.
-- **Google Sheets Integration:** Enable data export or two-way sync for spreadsheet power with bot convenience.
-- **Smarter Parsing:** Add natural language processing for inputs like "15 for lunch" without commands.
+- **Visual Reports:** I plan to integrate the `matplotlib` library to generate and send visual reports, such as pie charts illustrating spending by category.
+- **Natural Language Parsing:** I intend to implement smarter input parsing so that users can log transactions more naturally (e.g., by typing "15 for lunch") instead of having to use a specific command.
