@@ -4,6 +4,7 @@ import os
 import logging
 
 from utils.database import init_db
+from utils.scheduler import start_scheduler
 from handlers.start import start_command
 from handlers.transaction import (
     start_transaction,
@@ -13,6 +14,17 @@ from handlers.transaction import (
     category_handler,
     cancel_transaction,
     back_handler,
+)
+from handlers.recurring import (
+    start_recurring_transaction,
+    type_handler_recurring,
+    amount_handler_recurring,
+    description_handler_recurring,
+    category_handler_recurring,
+    frequency_handler,
+    start_date_handler,
+    end_date_handler,
+    cancel_recurring_transaction,
 )
 from handlers.history import (
     summary_handler,
@@ -69,6 +81,10 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 # Transaction states
 TYPE, AMOUNT, DESCRIPTION, CATEGORY = range(4)
 
+# Recurring Transaction states
+RECURRING_TYPE, RECURRING_AMOUNT, RECURRING_DESCRIPTION, RECURRING_CATEGORY, RECURRING_FREQUENCY, RECURRING_START_DATE, RECURRING_END_DATE = range(
+    7)
+
 # History states
 CHOICE, SUMMARY, WEEKLY, MONTHLY, YEARLY = range(5)
 
@@ -104,6 +120,21 @@ def main() -> None:
             ],
         },
         fallbacks=[CommandHandler("cancel", cancel_transaction)],
+    )
+
+    recurring_transaction_handler = ConversationHandler(
+        entry_points=[CommandHandler(
+            "recurring", start_recurring_transaction)],
+        states={
+            RECURRING_TYPE: [CallbackQueryHandler(type_handler_recurring)],
+            RECURRING_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, amount_handler_recurring)],
+            RECURRING_DESCRIPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, description_handler_recurring)],
+            RECURRING_CATEGORY: [CallbackQueryHandler(category_handler_recurring)],
+            RECURRING_FREQUENCY: [CallbackQueryHandler(frequency_handler)],
+            RECURRING_START_DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, start_date_handler)],
+            RECURRING_END_DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, end_date_handler)],
+        },
+        fallbacks=[CommandHandler("cancel", cancel_recurring_transaction)],
     )
 
     history_handler = ConversationHandler(
@@ -161,6 +192,7 @@ def main() -> None:
     )
 
     application.add_handler(transaction_handler)
+    application.add_handler(recurring_transaction_handler)
     application.add_handler(history_handler)
     application.add_handler(settings_handler)
     application.add_handler(budget_handler)
@@ -170,4 +202,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     init_db()
+    start_scheduler()
     main()
