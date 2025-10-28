@@ -4,90 +4,73 @@
 
 ## The Problem
 
-For the past two years, I have diligently used Google Sheets to track my personal income and expenses. The primary motivation has always been to understand where my money goes and maintain financial awareness. Google Sheets was my tool of choice because it is accessible from both my laptop and my phone, and it syncs data seamlessly across devices.
-
-However, this solution is not perfect. As I explored dedicated finance-tracking applications, I found they generally fell into three categories that didn't fit my needs:
-
-* **Platform-Specific:** Many of the best apps are (Android or iOS only), which is inconvenient.
-* **Subscription-Based:** Most powerful apps lock essential features behind a monthly or annual subscription.
-* **Bloated:** Many apps are overloaded with complex functionalities like investment tracking, loan management, or advanced charting, which I don't use and which clutter the interface.
+For the past two years, I've relied on Google Sheets to track personal income and expenses, aiming to understand spending patterns and maintain financial awareness. It's accessible on laptop and phone with seamless sync. However, dedicated finance apps often fall short: many are platform-specific (Android/iOS only), subscription-based with locked features, or bloated with unnecessary complexities like investment tracking or advanced charting that clutter the interface and aren't needed for basic tracking.
 
 ## The Solution
 
-In Malaysia, WhatsApp is the dominant platform for communication. However, my wife and I use Telegram as our primary messaging app, and I've come to appreciate its features. I already have Telegram installed, as do millions of other users. It supports multi-device sync, offers cloud storage, and has a powerful bot API.
-
-To solve my tracking problem, I realized a Telegram bot would be the perfect solution. A user doesn't need to install *another* app; they can simply interact with a bot in an app they already have open.
-
-I considered two options: a web app or a Telegram bot. I chose to build a Telegram bot because I wanted users to access the tool just by clicking a chat, rather than remembering or bookmarking a URL. For frequent users, they can simply pin the bot to the top of their chat list for instant access.
+In Malaysia, WhatsApp dominates communication, but my wife and I prefer Telegram for its features. With Telegram already installed by millions, its multi-device sync, cloud storage, and powerful bot API make it ideal. A Telegram bot eliminates the need for another app; users interact via an existing chat. I chose a bot over a web app for instant access by clicking a chat, allowing pinning for quick use.
 
 ## Personal Motivation
 
-I am a Physics graduate who wants to transition into a career as a software developer. This project was the perfect opportunity to self-teach a wide range of practical skills. By building this bot from scratch, I was able to gain hands-on experience with:
-* Interacting with third-party APIs (the Telegram Bot API).
-* Database design, implementation, and management.
-* Asynchronous programming, which is essential for a responsive bot.
-* Full-stack bot development, from user-facing commands to the database backend.
-* Writing clean, modular, and maintainable code.
+As a Physics graduate transitioning to software development, this project offered hands-on learning in practical skills: interacting with third-party APIs (Telegram Bot API), database design and management, asynchronous programming for responsiveness, full-stack bot development, and writing clean, modular code.
 
 ## Core Features
 
-Based on my personal use of Google Sheets, I drafted the "must-have" features for a minimum viable product (MVP).
+Drawing from Google Sheets usage, I identified essential MVP features:
 
-* **Transaction Logging:** A user can send `/transactions` to log either an expense or income. The bot guides them through a simple, clean process, asking for the amount and category.
-* **User-Friendly Interface:** Where possible, I use `InlineKeyboardButton` for a more modern and user-friendly experience (e.g., selecting a category). This is a major improvement over the older `ReplyKeyboardMarkup`, which clutters the user's keyboard and requires a lot of messy back-and-forth messaging.
-* **History & Summaries:** Users can send `/history` to check their recent transactions or get summaries of their financial activity by week, month, or year.
-* **User Settings:** The `/settings` command provides a central hub for users to manage their experience, including adding their own custom spending categories, changing their preferred currency, or resetting their data.
+- **Transaction Logging:** Use `/transactions` to log expenses or income. The bot guides through amount and category selection via a simple process.
+- **User-Friendly Interface:** Employ `InlineKeyboardButton` for modern, clickable category selection, avoiding cluttered keyboards and messy messaging.
+- **History & Summaries:** `/history` provides recent transactions or summaries by week, month, or year.
+- **User Settings:** `/settings` centralizes management of custom categories, currency preferences, and data resets.
 
 ## Technical Architecture
 
-The project is structured in a modular way to ensure separation of concerns, making the code easier to read, debug, and expand.
+The project uses modular structure for separation of concerns, enhancing readability, debugging, and expansion.
 
 ### `main.py`
-As the name suggests, this is the main entry point for the bot. Its primary responsibilities are:
-1.  Loading the `BOT_TOKEN` from the `.env` file using `dotenv`.
-2.  Initializing the `ApplicationBuilder` from `python-telegram-bot` to build the bot instance.
-3.  Registering all the command and message handlers. It imports functions and handlers from the `/handlers` directory and maps them to specific user commands (e.g., mapping the `/start` command to the `start` function in `start.py`).
-4.  Starting the bot's asynchronous event loop by calling `application.run_polling()`, which continuously listens for new messages from Telegram.
+This entry point handles:
+1. Loading `BOT_TOKEN` from `.env` via `dotenv`.
+2. Initializing `ApplicationBuilder` from `python-telegram-bot`.
+3. Registering handlers from `/handlers` for commands like `/start`.
+4. Starting the event loop with `application.run_polling()` to listen for messages.
 
 ### `./handlers`
-This directory contains all the logic for handling user commands. This separation keeps `main.py` clean and organized. Each file corresponds to a specific feature of the bot.
+Contains command logic, keeping `main.py` organized. Each file handles a feature:
 
-* **`start.py`**: Handles the very first commands a user interacts with: `/start` and `/help`. It's responsible for sending a welcome message, explaining the bot's purpose, and listing the available commands. This is the user's first impression of the bot.
-* **`transaction.py`**: This is the most critical and frequently used handler. It manages the logic for logging income and expenses (e.g., the `/transactions` command). It uses `ConversationHandler` to guide the user through the multi-step process of providing an amount, selecting a category (from default or custom lists), and optionally adding a description.
-* **`history.py`**: Contains the logic for the `/history` command. It presents the user with options (e.g., "Recent Transactions," "Monthly Summary," "Yearly Summary") and then fetches the relevant data from the database via `utils/database.py`. Finally, it formats this data into a clear, human-readable message to send back to the user.
-* **`settings.py`**: This file powers the `/settings` command. It typically presents an inline keyboard menu with several options, such as "Manage Custom Categories," "Change Currency," or "Reset All Data." It acts as a router, directing the user to other functions based on their selection.
-* **`budget.py`**: This file (or a similar one) would contain the logic for managing budgets. It would handle commands like `/set_budget`, `/view_budgets`, and `/delete_budget`. It would interact heavily with the database to store and retrieve budget information and compare it against the user's transactions.
-* **`recurring.py`**: This file would handle the logic for recurring transactions (e.g., rent, subscriptions). It would manage commands like `/add_recurring` and `/list_recurring`. It might also integrate with the `python-telegram-bot` `JobQueue` to automatically log these transactions at set intervals (e.g., on the 1st of every month).
+- **`start.py`**: Manages `/start` and `/help`, sending welcome messages and command lists.
+- **`transaction.py`**: Core handler for `/transactions`, using `ConversationHandler` for multi-step income/expense logging, including amount, category (default/custom), and optional descriptions.
+- **`history.py`**: Powers `/history`, offering options like "Recent Transactions" or "Monthly Summary," fetching data from `utils/database.py` and formatting responses.
+- **`settings.py`**: Drives `/settings` with inline menus for "Manage Custom Categories," "Change Currency," or "Reset All Data," routing to sub-functions.
+- **`budget.py`**: Handles budget commands like `/set_budget`, `/view_budgets`, and `/delete_budget`, storing/retrieving data and comparing against transactions.
+- **`recurring.py`**: Manages recurring transactions (e.g., rent), with commands like `/add_recurring` and `/list_recurring`, potentially using `JobQueue` for automatic logging.
 
 ### `./utils`
-This directory is used to abstract away complex logic, especially database interactions, so the handlers remain clean and focused on user interaction.
+Abstracts complex logic, especially database interactions.
 
-* **`database.py`**: This is a critical file that manages all communication with the SQLite database. It uses **SQLAlchemy**, which allows me to interact with the database using Python objects (an Object-Relational Mapper or ORM) instead of writing raw SQL. This makes the code more readable, maintainable, and secure.
-    * **Schema:** This file defines the database schema, which includes several tables:
-        * `users`: Stores user-specific information, like their Telegram ID and settings (e.g., currency).
-        * `default_categories`: A global table of categories (e.g., "Food," "Transport").
-        * `custom_categories`: Stores categories created by a specific user, linked by their `user_id`.
-        * `transactions`: The main table, storing each transaction with its amount, type (income/expense), and foreign keys linking to the `user_id` and `category_id`.
-        * `budget`: Stores budget information, linked to a user and a category.
-        * `recurring_transactions`: Stores the data for recurring transactions.
+- **`database.py`**: Manages SQLite via SQLAlchemy ORM for readable, secure operations. Schema includes:
+  - `users`: Telegram ID and settings (e.g., currency).
+  - `default_categories`: Global categories like "Food," "Transport."
+  - `custom_categories`: User-specific categories linked by `user_id`.
+  - `transactions`: Core table with amount, type (income/expense), and foreign keys to user and category.
+  - `budget`: User/category budget data.
+  - `recurring_transactions`: Recurring transaction details.
 
 ### `requirements.txt`
-This file lists all the Python libraries required for the project and their specific versions, ensuring that the project can be reliably installed in any environment. The major dependencies are:
-* `python-telegram-bot`: The core framework for building the bot.
-* `SQLAlchemy`: The ORM for all database operations.
-* `python-dotenv`: For managing environment variables securely.
+Lists dependencies: `python-telegram-bot` for bot framework, `SQLAlchemy` for ORM, `python-dotenv` for environment variables.
 
 ## Design Decisions
 
-* **Database: SQLite vs. PostgreSQL/MySQL**
-    * I chose to use SQLite for now because it is incredibly easy to set up, as it saves the entire database to a single file. It's serverless and perfect for development and small-to-medium applications. My use of SQLAlchemy means the database backend is abstracted. If the user base grows significantly, I can easily migrate to a more robust database like PostgreSQL with minimal code changes.
-* **Framework: `python-telegram-bot`**
-    * After some research, I found this to be the most actively supported, well-documented, and most-used framework for building Telegram bots with Python. Its robust support for asynchronous programming (`asyncio`) and its rich feature set (like `ConversationHandler` and `JobQueue`) made it the clear choice.
-* **Interface: `InlineKeyboardButton` vs. `ReplyKeyboardMarkup`**
-    * I initially considered `ReplyKeyboardMarkup` to get user input for categories. However, this method is clunky; it replaces the user's keyboard and requires them to send a separate message. I made a conscious design choice to use `InlineKeyboardButton` instead. This presents clean, clickable buttons *within* the chat message, leading to a much faster and more modern user experience.
+- **Database: SQLite vs. PostgreSQL/MySQL**  
+  SQLite's simplicity (single-file, serverless) suits development and small apps. SQLAlchemy abstracts backend, enabling easy migration to PostgreSQL if needed.
+
+- **Framework: `python-telegram-bot`**  
+  Chosen for active support, documentation, and features like `ConversationHandler` and `JobQueue`, with strong async support.
+
+- **Interface: `InlineKeyboardButton` vs. `ReplyKeyboardMarkup`**  
+  Opted for inline buttons for cleaner, faster UX within chat messages, avoiding keyboard replacement and extra messages.
 
 ## Future Improvements
 
-* **Visual Reports:** I would like to integrate `matplotlib` to generate and send visual reports (like pie charts of spending by category) to the user.
-* **Google Sheets Integration:** To bring the project full circle, I want to add a feature for users to export their data or even set up a two-way sync with a Google Sheet, giving them the power of a spreadsheet with the convenience of a bot.
-* **Smarter Parsing:** Implement more natural language parsing so a user could just type "15 for lunch" instead of using a specific command.
+- **Visual Reports:** Integrate `matplotlib` for pie charts of spending by category.
+- **Google Sheets Integration:** Enable data export or two-way sync for spreadsheet power with bot convenience.
+- **Smarter Parsing:** Add natural language processing for inputs like "15 for lunch" without commands.
