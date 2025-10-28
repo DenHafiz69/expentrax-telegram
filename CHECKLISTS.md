@@ -31,11 +31,11 @@ This checklist outlines the essential features required for a minimum viable pro
 
     - [x] Implemented a command to show total expenses for a specific period (e.g., this month).
 
-- [ ] **Balance Checking**: Check your current balance (income-expense)
+<!-- - [ ] **Balance Checking**: Check your current balance (income-expense)
 
     - [ ] Need a way to reset your balance
 
-    - [ ] Can also check the balance for each category 
+    - [ ] Can also check the balance for each category  -->
 
 ---
 
@@ -55,15 +55,15 @@ This checklist covers additional features to enhance the bot's functionality and
 
     - [x] Implemented a command for users to set a budget via /budget.
 
-    - [ ] The bot provides a summary of spending against the budget.
+    <!-- - [ ] The bot provides a summary of spending against the budget.
 
-    - [ ] The bot can alert the user when they are nearing their budget limit.
+    - [ ] The bot can alert the user when they are nearing their budget limit. -->
 
-- [ ] Visual Reporting: The bot provides visual summaries of spending.
+<!-- - [ ] Visual Reporting: The bot provides visual summaries of spending.
 
     - [ ] Integrated a plotting library (e.g., Matplotlib) to create charts.
 
-    - [ ] The bot can send a visual report (e.g., a pie chart) of expenses by category.
+    - [ ] The bot can send a visual report (e.g., a pie chart) of expenses by category. -->
 
 - [x] Recurring Transactions: The bot can handle recurring expenses.
 
