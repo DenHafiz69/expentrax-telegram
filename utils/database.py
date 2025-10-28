@@ -32,6 +32,7 @@ class User(Base):
     __tablename__ = 'users'
     id: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[Optional[str]] = mapped_column(String, unique=True)
+    currency: Mapped[Optional[str]] = mapped_column(String(5), default='$')
 
     transactions: Mapped[List["Transaction"]] = relationship(
         back_populates="user",
@@ -134,7 +135,7 @@ def save_user(id, username):
         session.add(user)
         session.commit()
 
-    logger.info("User saved to database: %s", user)
+    logger.info("User saved to database: %s", user.username)
 
 
 def save_transaction(
@@ -457,6 +458,32 @@ def get_spend_by_month(user_id: int, month: int, year: int):
         return session.execute(stmt).all()
 
 # Create the table
+
+
+def set_currency(user_id: int, currency_symbol: str):
+    """Sets the currency for a user."""
+    stmt = (
+        update(User)
+        .where(User.id == user_id)
+        .values(currency=currency_symbol)
+    )
+    with Session(engine) as session:
+        session.execute(stmt)
+        session.commit()
+
+
+def delete_user_data(user_id: int):
+    """Deletes all data associated with a user."""
+    with Session(engine) as session:
+        # Delete transactions
+        session.execute(delete(Transaction).where(
+            Transaction.user_id == user_id))
+        # Delete custom categories
+        session.execute(delete(CustomCategory).where(
+            CustomCategory.user_id == user_id))
+        # Delete budgets
+        session.execute(delete(Budget).where(Budget.user_id == user_id))
+        session.commit()
 
 
 def init_db():

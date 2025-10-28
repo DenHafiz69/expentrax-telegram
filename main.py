@@ -28,6 +28,8 @@ from handlers.settings import (
     view_categories,
     delete_categories,
     cancel_settings,
+    set_currency_handler,
+    reset_data_confirm_handler,
 )
 from handlers.budget import (
     start_budget,
@@ -64,8 +66,8 @@ TYPE, AMOUNT, DESCRIPTION, CATEGORY = range(4)
 CHOICE, SUMMARY, WEEKLY, MONTHLY, YEARLY = range(5)
 
 # Settings states
-CHOICE, ADD_CATEGORY, DATABASE_ACTION, VIEW_CATEGORIES, DELETE_CATEGORIES = range(
-    5)
+CHOICE, ADD_CATEGORY, DATABASE_ACTION, VIEW_CATEGORIES, DELETE_CATEGORIES, SET_CURRENCY, RESET_DATA, RESET_DATA_CONFIRM = range(
+    8)
 
 # Budget states
 CHOICE, MONTH_SELECTION, CATEGORY_SELECTION, AMOUNT_INPUT, CHANGE_CATEGORY, CHANGE_AMOUNT = range(
@@ -128,6 +130,14 @@ def main() -> None:
             DELETE_CATEGORIES: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND,
                                delete_categories)
+            ],
+            SET_CURRENCY: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND,
+                               set_currency_handler)
+            ],
+            RESET_DATA_CONFIRM: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND,
+                               reset_data_confirm_handler)
             ]
         },
         fallbacks=[CommandHandler("cancel", cancel_settings)],
