@@ -1,7 +1,7 @@
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ContextTypes, ConversationHandler
 
-from utils.database import get_period_total, get_recent_transactions, get_summary_periods, read_user, get_category_name_by_id
+from utils.database import get_period_total, get_recent_transactions, get_summary_periods, get_currency, get_category_name_by_id
 from datetime import datetime
 
 import logging
@@ -86,6 +86,7 @@ async def recent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await query.answer()
     user = query.from_user
     user_id = update.effective_chat.id
+    currency = get_currency(update.effective_chat.id)
 
     # Read the transactions from database
     transactions = get_recent_transactions(user_id)
@@ -106,7 +107,7 @@ async def recent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         message += (
             f"📅 {transaction.timestamp.strftime('%Y-%m-%d')} | "
             f"{type_prefix} | "
-            f"💵 RM {transaction.amount:.2f} | "
+            f"💵 {currency} {transaction.amount:.2f} | "
             f"🏷️ *{get_category_name_by_id(transaction.category_id)}* | "
             f"{transaction.description}\n"
         )
@@ -199,12 +200,13 @@ async def weekly_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     net_amount = week_total.total_income - week_total.total_expense
     emoji = "📈" if net_amount >= 0 else "📉"
+    currency = get_currency(update.effective_chat.id)
 
     await query.edit_message_text(
         text=f"📊 *Weekly Summary ({year_choice} Week {week_choice})*\n\n"
-        f"💰 Total Income: *RM {week_total.total_income:.2f}*\n"
-        f"💸 Total Expense: *RM {week_total.total_expense:.2f}*\n"
-        f"💡 Net: *RM {net_amount:.2f}* {emoji}",
+        f"💰 Total Income: *{currency} {week_total.total_income:.2f}*\n"
+        f"💸 Total Expense: *{currency} {week_total.total_expense:.2f}*\n"
+        f"💡 Net: *{currency} {net_amount:.2f}* {emoji}",
         parse_mode='Markdown'
     )
 
@@ -232,12 +234,13 @@ async def monthly_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     net_amount = month_total.total_income - month_total.total_expense
     emoji = "📈" if net_amount >= 0 else "📉"
+    currency = get_currency(update.effective_chat.id)
 
     await query.edit_message_text(
         text=f"📊 *Monthly Summary ({month_choice} {year_choice})*\n\n"
-        f"💰 Total Income: *RM {month_total.total_income:.2f}*\n"
-        f"💸 Total Expense: *RM {month_total.total_expense:.2f}*\n"
-        f"💡 Net: *RM {net_amount:.2f}* {emoji}",
+        f"💰 Total Income: *{currency} {month_total.total_income:.2f}*\n"
+        f"💸 Total Expense: *{currency} {month_total.total_expense:.2f}*\n"
+        f"💡 Net: *{currency} {net_amount:.2f}* {emoji}",
         parse_mode='Markdown'
     )
 
@@ -262,12 +265,13 @@ async def yearly_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     net_amount = year_total.total_income - year_total.total_expense
     emoji = "📈" if net_amount >= 0 else "📉"
+    currency = get_currency(update.effective_chat.id)
 
     await query.edit_message_text(
         text=f"📊 *Yearly Summary ({year_choice})*\n\n"
-        f"💰 Total Income: *RM {year_total.total_income:.2f}*\n"
-        f"💸 Total Expense: *RM {year_total.total_expense:.2f}*\n"
-        f"💡 Net: *RM {net_amount:.2f}* {emoji}",
+        f"💰 Total Income: *{currency} {year_total.total_income:.2f}*\n"
+        f"💸 Total Expense: *{currency} {year_total.total_expense:.2f}*\n"
+        f"💡 Net: *{currency} {net_amount:.2f}* {emoji}",
         parse_mode='Markdown'
     )
 

@@ -5,6 +5,7 @@ from utils.database import (
     get_categories_name,
     get_category_id,
     get_category_type,
+    get_currency,
     set_budget,
     get_budget_by_month,
     get_spend_by_month,
@@ -139,6 +140,7 @@ async def amount_input_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     category_name = context.user_data['budget_category_name']
     category_id = get_category_id(category_name)
     category_type = get_category_type(category_id)
+    currency = get_currency(update.effective_chat.id)
 
     set_budget(
         user_id=user.id,
@@ -152,7 +154,7 @@ async def amount_input_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     await update.message.reply_text(
         f"✅ Budget for *{category_name}* in "
         f"*{datetime(context.user_data['budget_year'], context.user_data['budget_month'], 1).strftime('%B %Y')}* "
-        f"has been set to *RM {context.user_data['budget_amount']:.2f}*.",
+        f"has been set to *{currency} {context.user_data['budget_amount']:.2f}*.",
         parse_mode='Markdown'
     )
 
@@ -167,6 +169,7 @@ async def check_budget_handler(update: Update, context: ContextTypes.DEFAULT_TYP
 
     budgets = get_budget_by_month(user_id, today.month, today.year)
     spends = get_spend_by_month(user_id, today.month, today.year)
+    currency = get_currency(update.effective_chat.id)
 
     if not budgets:
         await update.callback_query.edit_message_text(text="You have not set any budgets for this month.")
@@ -189,15 +192,15 @@ async def check_budget_handler(update: Update, context: ContextTypes.DEFAULT_TYP
 
         emoji = "✅" if remaining >= 0 else "❌"
         message += f"*{category_name}*:\n"
-        message += f"  - Budgeted: RM {budgeted:.2f}\n"
-        message += f"  - Spent: RM {spent:.2f}\n"
-        message += f"  - Remaining: RM {remaining:.2f} {emoji}\n\n"
+        message += f"  - Budgeted: {currency} {budgeted:.2f}\n"
+        message += f"  - Spent: {currency} {spent:.2f}\n"
+        message += f"  - Remaining: {currency} {remaining:.2f} {emoji}\n\n"
 
     total_remaining = total_budgeted - total_spent
     message += f"*Overall Summary*:\n"
-    message += f"  - Total Budgeted: RM {total_budgeted:.2f}\n"
-    message += f"  - Total Spent: RM {total_spent:.2f}\n"
-    message += f"  - Total Remaining: RM {total_remaining:.2f}\n"
+    message += f"  - Total Budgeted: {currency} {total_budgeted:.2f}\n"
+    message += f"  - Total Spent: {currency} {total_spent:.2f}\n"
+    message += f"  - Total Remaining: {currency} {total_remaining:.2f}\n"
 
     await update.callback_query.edit_message_text(text=message, parse_mode='Markdown')
 

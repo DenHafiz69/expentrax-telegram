@@ -1,7 +1,7 @@
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ContextTypes, ConversationHandler
 
-from utils.database import get_category_id, save_transaction, get_categories_name, get_category_type
+from utils.database import get_category_id, get_currency, save_transaction, get_categories_name, get_category_type
 from utils.misc import is_valid_currency, list_chunker
 
 import logging
@@ -132,6 +132,7 @@ async def category_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     category_name = query.data
     category_id = get_category_id(category_name)
     category_type = get_category_type(category_id)
+    currency = get_currency(update.effective_chat.id)
 
     # Save transaction to database
     save_transaction(
@@ -149,7 +150,7 @@ async def category_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     await query.edit_message_text(
         text=f"✅ {context.user_data['type']} added:\n\n"
         f"Description: {context.user_data['description']}\n"
-        f"Amount: RM {float(context.user_data['amount']):.2f}\n"
+        f"Amount: {currency} {float(context.user_data['amount']):.2f}\n"
         f"Category: {category_name}\n"
     )
 
