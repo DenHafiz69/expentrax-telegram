@@ -1,6 +1,3 @@
-import schedule
-import time
-import threading
 from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -56,16 +53,3 @@ def check_recurring_transactions():
                 )
                 logger.info(
                     f"Created recurring transaction for user {trans.user_id}")
-
-
-def run_scheduler():
-    schedule.every().day.at("00:00").do(check_recurring_transactions)
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
-
-
-def start_scheduler():
-    scheduler_thread = threading.Thread(target=run_scheduler)
-    scheduler_thread.daemon = True
-    scheduler_thread.start()
