@@ -5,8 +5,6 @@ from sqlalchemy.orm import DeclarativeBase, Session, mapped_column, Mapped, rela
 import os
 import logging
 
-from google.cloud.sql.connector import Connector
-
 # --- Logging Setup ---
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
@@ -20,29 +18,13 @@ logger = logging.getLogger(__name__)
 
 
 def init_connection_pool() -> create_engine:
-    # Check if running in the cloud or locally
-    if os.environ.get("GCP_PROJECT"):
-        # Cloud environment
-        connector = Connector()
-
-        def getconn():
-            conn = connector.connect(
-                # e.g., "project:region:instance"
-                os.environ["DB_CONNECTION_NAME"],
-                "pg8000",
-                user=os.environ["DB_USER"],
-                password=os.environ["DB_PASS"],
-                db=os.environ["DB_NAME"],
-            )
-            return conn
-
-        engine = create_engine(
-            "postgresql+pg8000://",
-            creator=getconn,
-        )
+    database_url = os.environ.get("DATABASE_URL")
+    if database_url:
+        logger.info("Using external database configuration.")
+        engine = create_engine(database_url)
     else:
-        # Local environment (falls back to SQLite for development)
         logger.info("Local environment detected. Using SQLite.")
+        os.makedirs("data", exist_ok=True)
         engine = create_engine("sqlite:///data/expentrax.db")
 
     return engine

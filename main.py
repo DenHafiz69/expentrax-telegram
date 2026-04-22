@@ -69,6 +69,7 @@ from handlers.budget import (
     cancel_budget,
     back_budget_handler,
 )
+from utils.scheduler import check_recurring_transactions
 
 # --- Bot Setup ---
 logging.basicConfig(
@@ -183,16 +184,16 @@ application.add_handler(history_handler)
 application.add_handler(settings_handler)
 application.add_handler(budget_handler)
 
-# --- Webhook Entry Point ---
+async def run_scheduler(context: ContextTypes.DEFAULT_TYPE):
+    """Run the recurring transactions check."""
+    logger.info("Starting recurring transaction check via JobQueue...")
+    check_recurring_transactions()
+    logger.info("Recurring transaction check finished.")
 
-
-async def webhook(request):
-    """Webhook entry point for Google Cloud Functions."""
-    try:
-        request_json = request.get_json(force=True)
-        update = Update.de_json(request_json, application.bot)
-        await application.process_update(update)
-        return "OK", 200
-    except Exception as e:
-        logger.error(f"Error processing update: {e}")
-        return "Error", 500
+if __name__ == "__main__":
+    logger.info("Starting bot...")
+    # Run recurring check once per hour to ensure it's picked up daily
+    application.job_queue.run_repeating(run_scheduler, interval=3600, first=10)
+    
+    # Start polling
+    application.run_polling(allowed_updates=Update.ALL_TYPES)
