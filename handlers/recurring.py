@@ -1,3 +1,4 @@
+import asyncio
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ContextTypes, ConversationHandler
 from datetime import datetime
@@ -13,14 +14,9 @@ logging.basicConfig(
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
+
 # Conversation states
 TYPE, AMOUNT, DESCRIPTION, CATEGORY, FREQUENCY, START_DATE, END_DATE = range(7)
-
-# Categories
-EXPENSE_CATEGORIES = list_chunker(
-    categories=get_categories_name("expense"), chunk_size=3)
-INCOME_CATEGORIES = list_chunker(
-    categories=get_categories_name("income"), chunk_size=3)
 
 
 async def start_recurring_transaction(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -74,7 +70,14 @@ async def description_handler_recurring(update: Update, context: ContextTypes.DE
     context.user_data['description'] = update.message.text
     logger.info("Recurring transaction description: %s, User: %s",
                 context.user_data['description'], user.first_name)
-    categories = INCOME_CATEGORIES if context.user_data['type'] == "Income" else EXPENSE_CATEGORIES
+                
+    user_id = update.effective_user.id
+    if context.user_data['type'] == "Income":
+        raw_categories = await asyncio.to_thread(get_categories_name, "income", user_id)
+    else:
+        raw_categories = await asyncio.to_thread(get_categories_name, "expense", user_id)
+        
+    categories = list_chunker(categories=raw_categories, chunk_size=3)
     keyboard = [[InlineKeyboardButton(
         category, callback_data=category) for category in row] for row in categories]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -156,11 +159,12 @@ async def end_date_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 context.user_data['end_date'], user.first_name)
 
     category_name = context.user_data['category_name']
-    category_id = get_category_id(category_name)
-    category_type = get_category_type(category_id)
-    currency = get_currency(update.effective_chat.id)
+    category_id = await asyncio.to_thread(get_category_id, category_name)
+    category_type = await asyncio.to_thread(get_category_type, category_id)
+    currency = await asyncio.to_thread(get_currency, update.effective_chat.id)
 
-    save_recurring_transaction(
+    await asyncio.to_thread(
+        save_recurring_transaction,
         user_id=update.effective_chat.id,
         type_of_transaction=context.user_data['type'].lower(),
         amount=float(context.user_data['amount']),

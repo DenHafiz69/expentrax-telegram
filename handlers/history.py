@@ -1,3 +1,4 @@
+import asyncio
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ContextTypes, ConversationHandler
 
@@ -86,10 +87,10 @@ async def recent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await query.answer()
     user = query.from_user
     user_id = update.effective_chat.id
-    currency = get_currency(update.effective_chat.id)
+    currency = await asyncio.to_thread(get_currency, update.effective_chat.id)
 
     # Read the transactions from database
-    transactions = get_recent_transactions(user_id)
+    transactions = await asyncio.to_thread(get_recent_transactions, user_id)
     logger.info("Recent transactions: %s, User: %s",
                 transactions, user.first_name)
 
@@ -103,12 +104,13 @@ async def recent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     message = "📄 *Here are your recent transactions:*\n\n"
     for transaction in transactions:
         type_prefix = "💰 Income" if transaction.type_of_transaction == "income" else "💸 Expense"
+        category_name = await asyncio.to_thread(get_category_name_by_id, transaction.category_id)
 
         message += (
             f"📅 {transaction.timestamp.strftime('%Y-%m-%d')} | "
             f"{type_prefix} | "
             f"💵 {currency} {transaction.amount:.2f} | "
-            f"🏷️ *{get_category_name_by_id(transaction.category_id)}* | "
+            f"🏷️ *{category_name}* | "
             f"{transaction.description}\n"
         )
 
@@ -130,7 +132,7 @@ async def summary_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     # Read the transactions from database
     user_id = update.effective_chat.id
-    periods = get_summary_periods(user_id, summary_choice.lower())
+    periods = await asyncio.to_thread(get_summary_periods, user_id, summary_choice.lower())
     context.user_data['periods'] = periods
 
     row_size = 3
@@ -189,7 +191,8 @@ async def weekly_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     year_choice, week_choice = user_choice[2], user_choice[1]
 
-    week_total = get_period_total(
+    week_total = await asyncio.to_thread(
+        get_period_total,
         user_id,
         period_type='week',
         target_year=int(year_choice),
@@ -200,7 +203,7 @@ async def weekly_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     net_amount = week_total.total_income - week_total.total_expense
     emoji = "📈" if net_amount >= 0 else "📉"
-    currency = get_currency(update.effective_chat.id)
+    currency = await asyncio.to_thread(get_currency, update.effective_chat.id)
 
     await query.edit_message_text(
         text=f"📊 *Weekly Summary ({year_choice} Week {week_choice})*\n\n"
@@ -223,7 +226,8 @@ async def monthly_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     month_choice, year_choice = user_choice[0], user_choice[1]
 
-    month_total = get_period_total(
+    month_total = await asyncio.to_thread(
+        get_period_total,
         user_id,
         period_type='month',
         target_year=int(year_choice),
@@ -234,7 +238,7 @@ async def monthly_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     net_amount = month_total.total_income - month_total.total_expense
     emoji = "📈" if net_amount >= 0 else "📉"
-    currency = get_currency(update.effective_chat.id)
+    currency = await asyncio.to_thread(get_currency, update.effective_chat.id)
 
     await query.edit_message_text(
         text=f"📊 *Monthly Summary ({month_choice} {year_choice})*\n\n"
@@ -255,7 +259,8 @@ async def yearly_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     year_choice = query.data
 
-    year_total = get_period_total(
+    year_total = await asyncio.to_thread(
+        get_period_total,
         user_id,
         period_type='year',
         target_year=int(year_choice)
@@ -265,7 +270,7 @@ async def yearly_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     net_amount = year_total.total_income - year_total.total_expense
     emoji = "📈" if net_amount >= 0 else "📉"
-    currency = get_currency(update.effective_chat.id)
+    currency = await asyncio.to_thread(get_currency, update.effective_chat.id)
 
     await query.edit_message_text(
         text=f"📊 *Yearly Summary ({year_choice})*\n\n"

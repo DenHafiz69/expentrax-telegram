@@ -1,3 +1,4 @@
+import asyncio
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ContextTypes, ConversationHandler
 
@@ -15,14 +16,6 @@ logging.basicConfig(
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
-
-
-# Set the categories for income and expense
-
-EXPENSE_CATEGORIES = list_chunker(
-    categories=get_categories_name("expense"), chunk_size=3)
-INCOME_CATEGORIES = list_chunker(
-    categories=get_categories_name("income"), chunk_size=3)
 
 # Conversation states
 TYPE, AMOUNT, DESCRIPTION, CATEGORY = range(4)
@@ -99,10 +92,13 @@ async def description_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
     logger.info("Transaction description: %s, User: %s",
                 context.user_data['description'], user.first_name)
 
+    user_id = update.effective_user.id
     if context.user_data['type'] == "Income":
-        categories = INCOME_CATEGORIES
+        raw_categories = await asyncio.to_thread(get_categories_name, "income", user_id)
     else:
-        categories = EXPENSE_CATEGORIES
+        raw_categories = await asyncio.to_thread(get_categories_name, "expense", user_id)
+        
+    categories = list_chunker(categories=raw_categories, chunk_size=3)
 
     keyboard = [
         [InlineKeyboardButton(category, callback_data=category)
@@ -130,12 +126,13 @@ async def category_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
     # Store transaction category in temporary dictionary
     category_name = query.data
-    category_id = get_category_id(category_name)
-    category_type = get_category_type(category_id)
-    currency = get_currency(update.effective_chat.id)
+    category_id = await asyncio.to_thread(get_category_id, category_name)
+    category_type = await asyncio.to_thread(get_category_type, category_id)
+    currency = await asyncio.to_thread(get_currency, update.effective_chat.id)
 
     # Save transaction to database
-    save_transaction(
+    await asyncio.to_thread(
+        save_transaction,
         user_id=update.effective_chat.id,
         type_of_transaction=context.user_data['type'].lower(),
         amount=float(context.user_data['amount']),
