@@ -16,5 +16,8 @@ COPY . .
 # Ensure data directory exists and has correct permissions
 RUN mkdir -p data
 
+# Expose the webhook port
+EXPOSE 8000
+
 # Run the bot
 CMD ["python", "main.py"]

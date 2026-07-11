@@ -1,3 +1,4 @@
+import asyncio
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ContextTypes, ConversationHandler
 from utils.database import (
@@ -139,11 +140,12 @@ async def delete_categories(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     type_of_transaction = query.data.lower()
     context.user_data['action'] = 'delete_category'
 
-    categories = get_custom_categories_name_and_id(
-        user_id, type_of_transaction)
+    categories = await asyncio.to_thread(
+        get_custom_categories_name_and_id, user_id, type_of_transaction
+    )
 
     keyboard = [
-        [InlineKeyboardButton(name, callback_data=name) for name, id in row]
+        [InlineKeyboardButton(name, callback_data=name) for name in row]
         for row in list_chunker(categories, 3)
     ]
     keyboard.append([InlineKeyboardButton(
@@ -166,14 +168,18 @@ async def database_action(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         category_name = update.message.text
         type_of_transaction = context.user_data.get('type_of_transaction')
 
-        if category_name in get_categories_name(type_of_transaction.lower(), user_id):
+        existing_categories = await asyncio.to_thread(
+            get_categories_name, type_of_transaction.lower(), user_id
+        )
+        if category_name in existing_categories:
             await update.message.reply_text(
                 f"⛔️ Category '{category_name}' already exists for {type_of_transaction}. Please choose another name.",
             )
             return DATABASE_ACTION
 
         try:
-            add_custom_category(
+            await asyncio.to_thread(
+                add_custom_category,
                 user_id=user_id,
                 name=category_name,
                 type_of_transaction=type_of_transaction.lower()
@@ -188,8 +194,8 @@ async def database_action(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         query = update.callback_query
         await query.answer()
         category_name = query.data
-        category_id = get_category_id(category_name)
-        delete_category(user_id, category_id)
+        category_id = await asyncio.to_thread(get_category_id, category_name)
+        await asyncio.to_thread(delete_category, user_id, category_id)
         await query.edit_message_text(
             text=f"⛔️ Category '{category_name}' has been successfully deleted!"
         )
@@ -201,7 +207,7 @@ async def view_categories(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     query = update.callback_query
     await query.answer()
     choice = query.data
-    categories = get_categories_name(choice.lower())
+    categories = await asyncio.to_thread(get_categories_name, choice.lower(), update.effective_chat.id)
 
     message = f"📋 Here are your {choice.lower()} categories:\n\n"
     for category in categories:
@@ -224,7 +230,7 @@ async def set_currency_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         )
         return SET_CURRENCY
 
-    set_currency(user_id, currency_symbol)
+    await asyncio.to_thread(set_currency, user_id, currency_symbol)
 
     await update.message.reply_text(
         f"✅ Your currency has been set to {currency_symbol}."
@@ -239,7 +245,7 @@ async def reset_data_confirm_handler(update: Update, context: ContextTypes.DEFAU
     user_id = update.effective_chat.id
 
     if choice == 'confirm_reset':
-        delete_user_data(user_id)
+        await asyncio.to_thread(delete_user_data, user_id)
         await query.edit_message_text(
             text="🗑️ All your data has been successfully reset."
         )

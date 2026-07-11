@@ -1,39 +1,175 @@
 # Expentrax: Personal Finance Telegram Bot
 
-I built Expentrax, a personal finance management tool, as a Telegram bot to offer a simple, fast, and highly accessible way for me to track my income and expenses. As my final project for CS50, the bot was born from my personal need to overcome the limitations of existing financial tracking methods. It represents a practical solution for anyone seeking a streamlined, no-frills approach to financial awareness, leveraging the convenience of a messaging platform that millions of people, including myself, already use daily. This project also served as a significant learning experience for me, enabling my transition from a background in Physics to a career in software development by building a full-featured application from the ground up.
+[![Python Version](https://img.shields.io/badge/python-3.13%2B-blue.svg)](https://www.python.org/)
+[![Telegram Bot API](https://img.shields.io/badge/Telegram%20Bot%20API-v22.4-blue)](https://core.telegram.org/bots/api)
+[![Database](https://img.shields.io/badge/Database-SQLite%20%7C%20PostgreSQL-green)](https://www.postgresql.org/)
+[![ORM](https://img.shields.io/badge/ORM-SQLAlchemy%202.0-red)](https://www.sqlalchemy.org/)
+[![Deployment](https://img.shields.io/badge/Deployment-Docker%20%2F%20Docker%20Compose-orange)](https://www.docker.com/)
 
-## The Problem
+Expentrax is a personal financial tracker built on top of the **Telegram Bot API**. It provides a lightweight, frictionless, and zero-installation approach to managing daily income, expenses, custom categories, budgets, and recurring transactions. 
 
-For two years, I relied on Google Sheets for my personal financial tracking. While functional and accessible across my devices, this method was not without its drawbacks. My exploration of dedicated finance applications revealed a landscape of tools that were often ill-suited for my simple needs. These applications typically fell into three problematic categories. First, many of the most effective apps were platform-specific, available only on either Android or iOS, creating an inconvenient barrier. Second, powerful features in many applications were locked behind recurring subscription fees, making them a costly option for basic expense tracking. Finally, a significant number of apps suffered from feature bloat, overwhelming me with complex functionalities such as investment portfolio management, loan amortization calculators, and advanced financial charting. These superfluous features cluttered the interface and detracted from the core task of simple income and expense logging.
+This project was built from scratch to replace manual tracking methods (such as Google Sheets) and overcome the limitations of proprietary finance tracking apps (which are often platform-restricted, feature-bloated, or paid). Expentrax serves as a capstone portfolio project demonstrating a deep dive into asynchronous programming, database optimization, background scheduling, and containerized deployment in a transition from a Physics background into professional software development.
 
-## The Solution
+---
 
-I identified a more elegant solution by looking at the tools I already used. In Malaysia, while WhatsApp is the dominant messaging app, my wife and I prefer Telegram for its robust features, including seamless multi-device synchronization, cloud storage, and a powerful bot API. I realized that my financial tool didn't need to be a standalone application. Instead, it could be integrated into an existing, widely-used platform.
+## 🏗️ System Architecture
 
-A Telegram bot was the perfect answer. This approach eliminates the need for users to download, install, and manage yet another application on their phones. I can interact with my finance tracker directly within a chat interface I am already familiar with and likely have open throughout the day. For ease of access, I can pin the bot to the top of my chat list, making it instantly available. This design choice prioritizes user convenience and reduces friction, making the habit of tracking finances easier to maintain.
+Expentrax is designed with a modular architecture that cleanly separates routing, business logic, background scheduling, and database access.
 
-## Core Features: Focus on Simplicity and User Experience
+```mermaid
+graph TD
+    User([User in Telegram App]) <-->|HTTPS Update / Webhook| TelegramAPI[Telegram Bot API Gateway]
+    TelegramAPI <-->|Webhook / Polling| AppContainer[Expentrax Application]
+    
+    subgraph AppContainer [Python Application Layer]
+        main[main.py: Entrypoint & Router] <--> handlers[Handlers: Conversation State Machines]
+        handlers <--> database[database.py: SQLAlchemy 2.0 ORM]
+        scheduler[scheduler.py: JobQueue Background Checker] -->|Hourly Check| database
+    end
+    
+    database <--> SQLite[(SQLite Database - Local)]
+    database <--> Postgres[(PostgreSQL / Supabase - Production)]
+```
 
-I designed the minimum viable product (MVP) for Expentrax based on my own experience with manual tracking in Google Sheets, focusing on essential, high-impact features.
+- **Client Gateway**: Telegram acts as the user interface, routing messages to our application via HTTPS Webhooks (Production) or Polling (Development).
+- **Application Core**: `main.py` parses commands and handles registration of state-driven conversational flow systems.
+- **Feature Handlers**: Each feature is modularized in `./handlers` to isolate code complexity. Large multi-step interactions use `ConversationHandler` to persist state between user replies.
+- **Data Access Layer**: Database queries are abstracted inside `utils/database.py` utilizing the modern SQLAlchemy 2.0 ORM.
+- **Background Scheduler**: A background worker check handles recurring transactions periodically without impeding bot response times.
 
-- **Transaction Logging:** The primary function is handled by the `/transactions` command, which initiates a guided conversation to log either income or an expense. The bot prompts for the amount and category, making the process quick and straightforward.
-- **Modern User Interface:** A key design decision was my use of `InlineKeyboardButton` for user interactions, such as selecting a category. This presents clean, clickable buttons directly within the chat message, offering a superior user experience compared to the older `ReplyKeyboardMarkup`, which clutters the user's keyboard and makes the interaction feel clunky.
-- **Financial History and Summaries:** With the `/history` command, I can review my recent transactions or request summaries of my financial activity, broken down by week, month, or year. This provides valuable insights into my spending habits over time.
-- **User Customization:** The `/settings` command serves as a central hub for personalization. Here, I can add my own custom spending categories, change my preferred currency, or reset my data if I wish to start over.
+---
 
-## Technical Architecture and Design Decisions
+## ⚡ Technical Design Decisions & Lessons Learned
 
-I built Expentrax with a modular architecture to ensure a clean separation of concerns, making the codebase readable, maintainable, and scalable.
+### 1. Conversational UX & State Machines
+Instead of forcing users to navigate complex forms or type error-prone command sequences, the logging process relies on a state machine pattern implemented via `ConversationHandler`.
+- **Interactive Buttons**: The bot uses `InlineKeyboardButton` and `CallbackQueryHandler` instead of plain text options or rigid keyboard menus. Clickable prompts provide a modern, app-like UI that automatically updates the active message text to eliminate conversation clutter.
+- **Dynamic Keyboards**: Keyboard actions dynamically query the database (e.g., custom categories defined by the specific user) in real-time, displaying immediate, contextual options.
 
-- **`main.py`**: This is the entry point of the application. It loads the bot token from an environment file, initializes the bot using the `python-telegram-bot` library, registers all the command handlers from the `/handlers` directory, and starts the bot's polling loop to listen for user messages.
-- **`./handlers`**: This directory contains the logic for each user-facing command, with each file dedicated to a specific feature (e.g., `transaction.py`, `history.py`, `settings.py`). This separation keeps the main file clean and organized. The `transaction.py` handler is the most complex, utilizing `ConversationHandler` to manage the multi-step process of logging a transaction.
-- **`./utils/database.py`**: To keep the handlers focused on user interaction, I abstracted all database logic into this utility file. It uses **SQLAlchemy**, an Object-Relational Mapper (ORM), which allows the application to interact with the database using Python objects instead of raw SQL queries. This improves code readability, security, and maintainability. The database schema includes tables for users, default and custom categories, transactions, budgets, and recurring transactions.
-- **Database Choice**: I chose **SQLite** for this project because it is serverless and stores the entire database in a single file, making it incredibly easy for development and deployment in small-to-medium-scale applications. My use of SQLAlchemy means that if the bot's user base grows, the backend can be migrated to a more robust database like PostgreSQL with minimal changes to the application code.
-- **Framework**: I chose the `python-telegram-bot` library for its active community support, comprehensive documentation, and powerful features like `ConversationHandler` and `JobQueue`, which are essential for creating a responsive and interactive bot.
+### 2. Multi-Threading & Async Event Loop Optimization
+One of the key bottlenecks when running an asynchronous bot with a SQL backend is that standard database transactions are synchronous (blocking).
+- **The Problem**: If a database query takes 500ms to execute, running it directly on the main event loop blocks all incoming messages for other concurrent users, causing lag.
+- **The Solution**: Every database CRUD helper inside our handlers is offloaded using `asyncio.to_thread`. This runs database interactions in a separate worker thread, keeping the async event loop entirely free to handle incoming network packets and webhook requests.
 
-## Future Plans
+### 3. Indexed User Lookup for Scale
+To ensure lookups remain extremely fast as the database size increases:
+- Query-level index optimizations (`index=True`) are defined on the `user_id` foreign key columns across the `Transaction`, `Budget`, `RecurringTransaction`, and `CustomCategory` SQLAlchemy tables.
+- This creates structured index trees that reduce search complexity from \(O(N)\) table scans to \(O(\log N)\) lookups.
 
-I have a clear roadmap for future improvements that will add more value for users:
+### 4. Database Engine Agnosticism (SQLite & PostgreSQL)
+To keep the application developer-friendly yet production-ready, the connection pooling layer adapts to its environment:
+- **Local Dev**: Defaults to a single-file, zero-config **SQLite** database.
+- **Production**: Seamlessly connects to a high-concurrency **PostgreSQL** instance (e.g., Supabase) by injecting the `DATABASE_URL` environment variable. 
+- Thanks to SQLAlchemy, no raw SQL scripts or table structures need modification when shifting between engines.
 
-- **Visual Reports:** I plan to integrate the `matplotlib` library to generate and send visual reports, such as pie charts illustrating spending by category.
-- **Natural Language Parsing:** I intend to implement smarter input parsing so that users can log transactions more naturally (e.g., by typing "15 for lunch") instead of having to use a specific command.
+### 5. Production Webhook Architecture
+- **Latency Optimization**: In development, Polling queries Telegram repeatedly. For production deployment, the bot switches to Webhook mode, exposing an internal port via a Tornado-backed HTTP server. 
+- **Security Check**: Every incoming webhook payload is validated against a pre-shared `SECRET_TOKEN` to ensure requests originate strictly from Telegram's secure gateway.
+
+---
+
+## 🛠️ Tech Stack & Packages
+
+- **Core Runtime**: Python 3.13
+- **Bot Framework**: `python-telegram-bot[webhooks,job-queue]` (v22.4)
+- **Database Engine**: SQLAlchemy 2.0 ORM, PostgreSQL (via Supabase driver integration), SQLite
+- **Static Typing & Lints**: mypy, black, flake8
+- **Process Orchestration**: Docker & Docker Compose
+- **Scheduling**: APScheduler (embedded via JobQueue)
+
+---
+
+## ✨ Features Checklist
+
+- [x] **State-Guided Transaction Logging** (`/transaction`): Prompt-driven flow for income/expense details (type, amount, description, category).
+- [x] **Dynamic Categories Settings** (`/settings`): Create and delete custom transaction categories instantly.
+- [x] **Budgeting Suite** (`/budget`): Set monthly budgets for specific categories and audit progress.
+- [x] **Recurring Ledger Scheduler** (`/recurring`): Add repeating financial entries (daily, weekly, monthly) running on a background clock.
+- [x] **Currency Personalization**: Swap currency notations (e.g., RM, USD, EUR) to customize interface outputs.
+- [x] **Granular Financial History** (`/history`): Instantly query past logs, grouped and aggregated by week, month, or year.
+- [x] **Dockerized Setup**: Multi-stage Docker integration and environment variable routing.
+
+---
+
+## 📂 Project Structure
+
+```bash
+├── data/                    # Local database storage directory (SQLite)
+├── handlers/                # Business logic command handlers
+│   ├── start.py             # Entrypoint message /start
+│   ├── transaction.py       # State machine flow for transactions
+│   ├── recurring.py         # State machine flow for recurring logs
+│   ├── history.py           # Financial reporting and search commands
+│   ├── settings.py          # Dashboard for preferences and custom categories
+│   └── budget.py            # Budget limit set and management handlers
+├── utils/                   # Shared utility modules
+│   ├── database.py          # SQLAlchemy models, initialization and CRUD tasks
+│   ├── scheduler.py         # Automated background checks for recurring actions
+│   └── misc.py              # Parsing and formatting utilities
+├── Dockerfile               # Production multi-stage docker configurations
+├── docker-compose.yml       # Production deployment docker configuration
+├── main.py                  # Main entrypoint; registers routing tables and launches server
+├── requirements.txt         # Project dependencies
+└── pyproject.toml           # Build configurations and package manager targets
+```
+
+---
+
+## 🚀 Setup & Local Execution
+
+### 1. Clone the Repository
+```bash
+git clone https://github.com/DenHafiz69/expentrax-telegram.git
+cd expentrax-telegram
+```
+
+### 2. Configure Virtual Environment (uv / pip)
+Using standard `venv`:
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+### 3. Setup Environment Configuration
+Create a `.env` file in the root of the workspace:
+```env
+BOT_TOKEN=your_telegram_bot_token_from_botfather
+
+# Optional (Local defaults to SQLite):
+# DATABASE_URL=postgresql://user:password@host:port/dbname
+```
+
+### 4. Run Locally (Polling Mode)
+```bash
+python main.py
+```
+
+---
+
+## 🐳 Containerized Deployment (Docker)
+
+To run the containerized application stack locally or on a VPS:
+
+### 1. Setup Docker Environment Variables
+Ensure the following variables are present in your production environment or `.env` file:
+```env
+BOT_TOKEN=your_telegram_bot_token
+WEBHOOK_URL=https://your-public-domain.com
+SECRET_TOKEN=your_custom_secure_webhook_secret_token
+DATABASE_URL=your_postgres_database_url
+```
+
+### 2. Launch the Application Stack
+```bash
+docker-compose up --build -d
+```
+The application will listen on port `8000`. Set up your reverse proxy (e.g., Nginx, Traefik, Cloudflare Tunnels) to direct traffic from `https://your-public-domain.com` to `localhost:8000`.
+
+---
+
+## 🏆 Key Achievements & Portfolio Highlights
+- Built a **non-blocking asynchronous backend** that handles database queries in worker threads to prevent bot lag.
+- Achieved **engine flexibility** that swaps storage from offline SQLite to scale-ready PostgreSQL using SQLAlchemy.
+- Implemented **state machine conversations** using `ConversationHandler` along with dynamic inline keyboards.
+- Integrated an **automated background task scheduler** to process recurring user payments and items.

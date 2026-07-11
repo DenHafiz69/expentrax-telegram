@@ -1,3 +1,4 @@
+import asyncio
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ContextTypes, ConversationHandler
 
@@ -25,10 +26,6 @@ logger = logging.getLogger(__name__)
 # Conversation states
 CHOICE, MONTH_SELECTION, CATEGORY_SELECTION, AMOUNT_INPUT, CHANGE_CATEGORY, CHANGE_AMOUNT = range(
     6)
-
-# Keyboards
-EXPENSE_CATEGORIES = list_chunker(
-    categories=get_categories_name("expense"), chunk_size=3)
 
 
 async def start_budget(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -96,10 +93,14 @@ async def month_selection_handler(update: Update, context: ContextTypes.DEFAULT_
     context.user_data['budget_month'] = month_number
     context.user_data['budget_year'] = int(year)
 
+    user_id = update.effective_chat.id
+    raw_categories = await asyncio.to_thread(get_categories_name, "expense", user_id)
+    expense_categories = list_chunker(categories=raw_categories, chunk_size=3)
+
     keyboard = [
         [InlineKeyboardButton(category, callback_data=category)
          for category in row]
-        for row in EXPENSE_CATEGORIES
+        for row in expense_categories
     ]
     keyboard.append([InlineKeyboardButton(
         "Back", callback_data="back_to_month_selection")])
@@ -138,11 +139,12 @@ async def amount_input_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     context.user_data['budget_amount'] = float(amount)
 
     category_name = context.user_data['budget_category_name']
-    category_id = get_category_id(category_name)
-    category_type = get_category_type(category_id)
-    currency = get_currency(update.effective_chat.id)
+    category_id = await asyncio.to_thread(get_category_id, category_name)
+    category_type = await asyncio.to_thread(get_category_type, category_id)
+    currency = await asyncio.to_thread(get_currency, update.effective_chat.id)
 
-    set_budget(
+    await asyncio.to_thread(
+        set_budget,
         user_id=user.id,
         budgeted_amount=context.user_data['budget_amount'],
         category_id=category_id,
@@ -167,9 +169,9 @@ async def check_budget_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     user_id = update.effective_chat.id
     today = datetime.now()
 
-    budgets = get_budget_by_month(user_id, today.month, today.year)
-    spends = get_spend_by_month(user_id, today.month, today.year)
-    currency = get_currency(update.effective_chat.id)
+    budgets = await asyncio.to_thread(get_budget_by_month, user_id, today.month, today.year)
+    spends = await asyncio.to_thread(get_spend_by_month, user_id, today.month, today.year)
+    currency = await asyncio.to_thread(get_currency, update.effective_chat.id)
 
     if not budgets:
         await update.callback_query.edit_message_text(text="You have not set any budgets for this month.")
@@ -182,7 +184,7 @@ async def check_budget_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     spend_dict = {spend.category_id: spend.total_spent for spend in spends}
 
     for budget in budgets:
-        category_name = get_category_name_by_id(budget.category_id)
+        category_name = await asyncio.to_thread(get_category_name_by_id, budget.category_id)
         budgeted = budget.budgeted_amount
         spent = spend_dict.get(budget.category_id, 0)
         remaining = budgeted - spent

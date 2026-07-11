@@ -4,9 +4,14 @@ services:
   bot:
     build: .
     restart: unless-stopped
+    ports:
+      - "8000:8000"
     volumes:
       - ./data:/app/data
     environment:
       - BOT_TOKEN=${BOT_TOKEN}
+      - WEBHOOK_URL=${WEBHOOK_URL}
+      - PORT=8000
+      - SECRET_TOKEN=${SECRET_TOKEN}
       # If using an external database like AWS RDS (Postgres), uncomment and set DATABASE_URL
       # - DATABASE_URL=postgresql://user:password@host:5432/dbname

@@ -187,7 +187,7 @@ application.add_handler(budget_handler)
 async def run_scheduler(context: ContextTypes.DEFAULT_TYPE):
     """Run the recurring transactions check."""
     logger.info("Starting recurring transaction check via JobQueue...")
-    check_recurring_transactions()
+    await asyncio.to_thread(check_recurring_transactions)
     logger.info("Recurring transaction check finished.")
 
 if __name__ == "__main__":
@@ -195,5 +195,21 @@ if __name__ == "__main__":
     # Run recurring check once per hour to ensure it's picked up daily
     application.job_queue.run_repeating(run_scheduler, interval=3600, first=10)
     
-    # Start polling
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    WEBHOOK_URL = os.getenv("WEBHOOK_URL")
+    PORT = int(os.getenv("PORT", "8000"))
+    LISTEN_ADDRESS = os.getenv("LISTEN_ADDRESS", "0.0.0.0")
+    SECRET_TOKEN = os.getenv("SECRET_TOKEN")
+
+    if WEBHOOK_URL:
+        logger.info(f"Starting bot via webhook on {LISTEN_ADDRESS}:{PORT}...")
+        application.run_webhook(
+            listen=LISTEN_ADDRESS,
+            port=PORT,
+            url_path=f"webhook/{BOT_TOKEN}",
+            webhook_url=f"{WEBHOOK_URL}/webhook/{BOT_TOKEN}",
+            secret_token=SECRET_TOKEN,
+            allowed_updates=Update.ALL_TYPES,
+        )
+    else:
+        logger.info("Starting bot via polling...")
+        application.run_polling(allowed_updates=Update.ALL_TYPES)

@@ -31,7 +31,7 @@ pydantic_core==2.41.5
 pyflakes==3.4.0
 PyJWT==2.10.1
 python-dotenv==1.1.1
-python-telegram-bot==22.4
+python-telegram-bot[webhooks,job-queue]==22.4
 pytokens==0.2.0
 realtime==2.24.0
 schedule==1.2.2

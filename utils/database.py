@@ -70,7 +70,7 @@ class User(Base):
 class Transaction(Base):
     __tablename__ = 'transactions'
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     type_of_transaction: Mapped[str] = mapped_column(String(10))
     amount: Mapped[float] = mapped_column(Float)
     description: Mapped[str] = mapped_column(Text)
@@ -98,7 +98,7 @@ class CustomCategory(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(50))
     type_of_transaction: Mapped[str] = mapped_column(String(10))
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     user: Mapped["User"] = relationship(back_populates="custom_categories")
 
     def __repr__(self):
@@ -108,7 +108,7 @@ class CustomCategory(Base):
 class Budget(Base):
     __tablename__ = 'budget'
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     budgeted_amount: Mapped[float] = mapped_column(Float)
     year: Mapped[int] = mapped_column(Integer)
     month: Mapped[int] = mapped_column(Integer)
@@ -123,7 +123,7 @@ class Budget(Base):
 class RecurringTransaction(Base):
     __tablename__ = 'recurring_transactions'
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     type_of_transaction: Mapped[str] = mapped_column(String(10))
     amount: Mapped[float] = mapped_column(Float)
     description: Mapped[str] = mapped_column(Text)
