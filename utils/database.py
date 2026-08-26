@@ -23,9 +23,34 @@ def init_connection_pool() -> create_engine:
         logger.info("Using external database configuration.")
         engine = create_engine(database_url)
     else:
-        logger.info("Local environment detected. Using SQLite.")
-        os.makedirs("data", exist_ok=True)
-        engine = create_engine("sqlite:///data/expentrax.db")
+        db_host = os.environ.get("DB_HOST")
+        if db_host:
+            import boto3
+            import json
+            from sqlalchemy.engine import URL
+
+            db_port = os.environ.get("DB_PORT", "5432")
+            db_name = os.environ.get("DB_NAME")
+            db_secret_arn = os.environ.get("DB_SECRET_ARN")
+
+            client = boto3.client("secretsmanager")
+            response = client.get_secret_value(SecretId=db_secret_arn)
+            credentials = json.loads(response["SecretString"])
+
+            url = URL.create(
+                drivername="postgresql",
+                username=credentials["username"],
+                password=credentials["password"],
+                host=db_host,
+                port=int(db_port),
+                database=db_name,
+            )
+            logger.info("Using RDS PostgreSQL database.")
+            engine = create_engine(url)
+        else:
+            logger.info("Local environment detected. Using SQLite.")
+            os.makedirs("data", exist_ok=True)
+            engine = create_engine("sqlite:///data/expentrax.db")
 
     return engine
 

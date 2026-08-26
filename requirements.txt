@@ -22,6 +22,7 @@ mypy_extensions==1.1.0
 packaging==25.0
 pathspec==0.12.1
 platformdirs==4.5.0
+psycopg2-binary==2.9.10
 postgrest==2.24.0
 propcache==0.4.1
 pycodestyle==2.14.0

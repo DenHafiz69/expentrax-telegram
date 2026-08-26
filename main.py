@@ -80,10 +80,23 @@ logger = logging.getLogger(__name__)
 # Load environment variables from .env file for local development
 load_dotenv()
 
-# Access environment variables
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+# Access environment variables - fetch from Secrets Manager in Lambda, .env locally
+
+
+def get_bot_token():
+    secret_arn = os.getenv("TELEGRAM_SECRET_ARN")
+    if secret_arn:
+        import boto3
+
+        client = boto3.client("secretsmanager")
+        response = client.get_secret_value(SecretId=secret_arn)
+        return response["SecretString"]
+    return os.getenv("BOT_TOKEN")
+
+
+BOT_TOKEN = get_bot_token()
 if not BOT_TOKEN:
-    raise ValueError("No BOT_TOKEN found in environment variables")
+    raise ValueError("No BOT_TOKEN found in environment variables or Secrets Manager")
 
 # State definitions
 TYPE, AMOUNT, DESCRIPTION, CATEGORY = range(4)
@@ -189,6 +202,18 @@ async def run_scheduler(context: ContextTypes.DEFAULT_TYPE):
     logger.info("Starting recurring transaction check via JobQueue...")
     await asyncio.to_thread(check_recurring_transactions)
     logger.info("Recurring transaction check finished.")
+
+def handler(event, context):
+    """AWS Lambda handler for processing Telegram webhook updates."""
+    body = json.loads(event.get("body") or "{}")
+    update = Update.de_json(body, application.bot)
+    if update:
+        asyncio.run(application.process_update(update))
+    return {
+        "statusCode": 200,
+        "body": json.dumps({"status": "ok"}),
+    }
+
 
 if __name__ == "__main__":
     logger.info("Starting bot...")
