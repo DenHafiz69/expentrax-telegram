@@ -35,7 +35,6 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🚀 <b>Main Commands</b>\n"
         "- /transaction — <b>Log Finances.</b> Starts a conversation to record a new <b>Income</b> or <b>Expense</b>.\n"
         "- /budget - <b>Budgeting.</b> Set/Change or Check your budgets.\n"
-        "- /recurring - <b>Set recurring transactions.</b> Transactions that recurring daily, weekly, or monthly.\n"
         "- /history — <b>View Reports.</b> Check your transactions, get recent history, or view summaries (yearly, monthly, or weekly).\n"
         "- /settings — <b>Manage Categories.</b> View all available categories, and <b>add or remove your own custom categories</b>.\n\n"
 

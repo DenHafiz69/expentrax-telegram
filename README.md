@@ -19,23 +19,24 @@ Expentrax is designed with a modular architecture that cleanly separates routing
 ```mermaid
 graph TD
     User([User in Telegram App]) <-->|HTTPS Update / Webhook| TelegramAPI[Telegram Bot API Gateway]
-    TelegramAPI <-->|Webhook / Polling| AppContainer[Expentrax Application]
+    TelegramAPI <-->|Webhook / AWS Lambda| AppContainer[Expentrax Application]
     
     subgraph AppContainer [Python Application Layer]
-        main[main.py: Entrypoint & Router] <--> handlers[Handlers: Conversation State Machines]
+        main[main.py: Entrypoint & Lambda Router] <--> handlers[Handlers: Conversation State Machines]
         handlers <--> database[database.py: SQLAlchemy 2.0 ORM]
-        scheduler[scheduler.py: JobQueue Background Checker] -->|Hourly Check| database
+        main <--> persistence[persistence.py: Stateless SQLAlchemyPersistence]
+        persistence <--> database
     end
     
     database <--> SQLite[(SQLite Database - Local)]
-    database <--> Postgres[(PostgreSQL / Supabase - Production)]
+    database <--> Postgres[(PostgreSQL / RDS / Supabase - Production)]
 ```
 
-- **Client Gateway**: Telegram acts as the user interface, routing messages to our application via HTTPS Webhooks (Production) or Polling (Development).
-- **Application Core**: `main.py` parses commands and handles registration of state-driven conversational flow systems.
-- **Feature Handlers**: Each feature is modularized in `./handlers` to isolate code complexity. Large multi-step interactions use `ConversationHandler` to persist state between user replies.
-- **Data Access Layer**: Database queries are abstracted inside `utils/database.py` utilizing the modern SQLAlchemy 2.0 ORM.
-- **Background Scheduler**: A background worker check handles recurring transactions periodically without impeding bot response times.
+- **Client Gateway**: Telegram acts as the user interface, routing messages to our application via HTTPS Webhooks (Production / AWS Lambda) or Polling (Development).
+- **Application Core**: `main.py` parses webhook payloads and AWS Lambda events, delegating to state-driven conversational flow systems.
+- **Stateless Persistence Layer**: `utils/persistence.py` automatically persists and restores multi-step conversation states and user session data across ephemeral Lambda instances.
+- **Feature Handlers**: Each feature is modularized in `./handlers` to isolate code complexity. Large multi-step interactions use `ConversationHandler` backed by database persistence.
+- **Data Access Layer**: Database queries are abstracted inside `utils/database.py` utilizing modern SQLAlchemy 2.0 ORM with connection pooling optimized for AWS Lambda.
 
 ---
 
@@ -84,9 +85,9 @@ To keep the application developer-friendly yet production-ready, the connection 
 - [x] **State-Guided Transaction Logging** (`/transaction`): Prompt-driven flow for income/expense details (type, amount, description, category).
 - [x] **Dynamic Categories Settings** (`/settings`): Create and delete custom transaction categories instantly.
 - [x] **Budgeting Suite** (`/budget`): Set monthly budgets for specific categories and audit progress.
-- [x] **Recurring Ledger Scheduler** (`/recurring`): Add repeating financial entries (daily, weekly, monthly) running on a background clock.
 - [x] **Currency Personalization**: Swap currency notations (e.g., RM, USD, EUR) to customize interface outputs.
 - [x] **Granular Financial History** (`/history`): Instantly query past logs, grouped and aggregated by week, month, or year.
+- [x] **Stateless AWS Lambda & Serverless Readiness**: Database-persisted conversational states and webhook handler ready for AWS Lambda & API Gateway.
 - [x] **Dockerized Setup**: Multi-stage Docker integration and environment variable routing.
 
 ---
@@ -98,17 +99,19 @@ To keep the application developer-friendly yet production-ready, the connection 
 ├── handlers/                # Business logic command handlers
 │   ├── start.py             # Entrypoint message /start
 │   ├── transaction.py       # State machine flow for transactions
-│   ├── recurring.py         # State machine flow for recurring logs
 │   ├── history.py           # Financial reporting and search commands
 │   ├── settings.py          # Dashboard for preferences and custom categories
 │   └── budget.py            # Budget limit set and management handlers
 ├── utils/                   # Shared utility modules
 │   ├── database.py          # SQLAlchemy models, initialization and CRUD tasks
-│   ├── scheduler.py         # Automated background checks for recurring actions
+│   ├── persistence.py       # Custom SQLAlchemyPersistence for stateless Lambda execution
 │   └── misc.py              # Parsing and formatting utilities
+├── tests/                   # Automated test suite
+│   └── test_stateless_lambda.py # Persistence and Lambda webhook unit tests
+├── deploy.md                # AWS Lambda & RDS PostgreSQL deployment guide
 ├── Dockerfile               # Production multi-stage docker configurations
 ├── docker-compose.yml       # Production deployment docker configuration
-├── main.py                  # Main entrypoint; registers routing tables and launches server
+├── main.py                  # Main entrypoint; registers routing tables and AWS Lambda handler
 ├── requirements.txt         # Project dependencies
 └── pyproject.toml           # Build configurations and package manager targets
 ```

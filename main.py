@@ -1,9 +1,11 @@
 # Import necessary modules
-from dotenv import load_dotenv
 import os
+import json
+import base64
 import logging
 import asyncio
-import json
+from typing import Any, Optional
+from dotenv import load_dotenv
 
 from telegram import Update
 from telegram.ext import (
@@ -13,10 +15,10 @@ from telegram.ext import (
     ConversationHandler,
     MessageHandler,
     CallbackQueryHandler,
-    ContextTypes,
 )
 
-from utils.database import init_db
+from utils.database import init_db, engine
+from utils.persistence import SQLAlchemyPersistence
 from handlers.start import start_command
 from handlers.transaction import (
     start_transaction,
@@ -26,17 +28,6 @@ from handlers.transaction import (
     category_handler,
     cancel_transaction,
     back_handler,
-)
-from handlers.recurring import (
-    start_recurring_transaction,
-    type_handler_recurring,
-    amount_handler_recurring,
-    description_handler_recurring,
-    category_handler_recurring,
-    frequency_handler,
-    start_date_handler,
-    end_date_handler,
-    cancel_recurring_transaction,
 )
 from handlers.history import (
     summary_handler,
@@ -69,9 +60,8 @@ from handlers.budget import (
     cancel_budget,
     back_budget_handler,
 )
-from utils.scheduler import check_recurring_transactions
 
-# --- Bot Setup ---
+# --- Logging Setup ---
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
@@ -80,10 +70,8 @@ logger = logging.getLogger(__name__)
 # Load environment variables from .env file for local development
 load_dotenv()
 
-# Access environment variables - fetch from Secrets Manager in Lambda, .env locally
 
-
-def get_bot_token():
+def get_bot_token() -> str:
     secret_arn = os.getenv("TELEGRAM_SECRET_ARN")
     if secret_arn:
         import boto3
@@ -91,24 +79,15 @@ def get_bot_token():
         client = boto3.client("secretsmanager")
         response = client.get_secret_value(SecretId=secret_arn)
         return response["SecretString"]
-    return os.getenv("BOT_TOKEN")
+    return os.getenv("BOT_TOKEN", "")
 
 
 BOT_TOKEN = get_bot_token()
-if not BOT_TOKEN:
-    raise ValueError("No BOT_TOKEN found in environment variables or Secrets Manager")
+if not BOT_TOKEN and not (os.getenv("AWS_LAMBDA_FUNCTION_NAME") or os.getenv("AWS_EXECUTION_ENV")):
+    logger.warning("BOT_TOKEN is not configured.")
 
 # State definitions
 TYPE, AMOUNT, DESCRIPTION, CATEGORY = range(4)
-(
-    RECURRING_TYPE,
-    RECURRING_AMOUNT,
-    RECURRING_DESCRIPTION,
-    RECURRING_CATEGORY,
-    RECURRING_FREQUENCY,
-    RECURRING_START_DATE,
-    RECURRING_END_DATE,
-) = range(7)
 CHOICE, SUMMARY, WEEKLY, MONTHLY, YEARLY = range(5)
 (
     SETTINGS_CHOICE,
@@ -129,13 +108,22 @@ CHOICE, SUMMARY, WEEKLY, MONTHLY, YEARLY = range(5)
     CHANGE_AMOUNT,
 ) = range(6)
 
-# Initialize the database
+# Initialize database schema
 init_db()
 
-# Build the application and add handlers once
-application = ApplicationBuilder().token(BOT_TOKEN).build()
+# Initialize database-backed persistence for stateless execution
+persistence = SQLAlchemyPersistence(db_engine=engine)
 
-# Add handlers
+# Build the application with persistence attached
+application = (
+    ApplicationBuilder()
+    .token(BOT_TOKEN or "TOKEN_PLACEHOLDER")
+    .persistence(persistence)
+    .build()
+)
+
+# --- Add Handlers with Persistence ---
+
 transaction_handler = ConversationHandler(
     entry_points=[CommandHandler("transaction", start_transaction)],
     states={
@@ -152,31 +140,8 @@ transaction_handler = ConversationHandler(
         ],
     },
     fallbacks=[CommandHandler("cancel", cancel_transaction)],
-    per_message=False,
-)
-
-recurring_transaction_handler = ConversationHandler(
-    entry_points=[CommandHandler("recurring", start_recurring_transaction)],
-    states={
-        RECURRING_TYPE: [CallbackQueryHandler(type_handler_recurring)],
-        RECURRING_AMOUNT: [
-            MessageHandler(filters.TEXT & ~filters.COMMAND, amount_handler_recurring)
-        ],
-        RECURRING_DESCRIPTION: [
-            MessageHandler(
-                filters.TEXT & ~filters.COMMAND, description_handler_recurring
-            )
-        ],
-        RECURRING_CATEGORY: [CallbackQueryHandler(category_handler_recurring)],
-        RECURRING_FREQUENCY: [CallbackQueryHandler(frequency_handler)],
-        RECURRING_START_DATE: [
-            MessageHandler(filters.TEXT & ~filters.COMMAND, start_date_handler)
-        ],
-        RECURRING_END_DATE: [
-            MessageHandler(filters.TEXT & ~filters.COMMAND, end_date_handler)
-        ],
-    },
-    fallbacks=[CommandHandler("cancel", cancel_recurring_transaction)],
+    name="transaction_handler",
+    persistent=True,
     per_message=False,
 )
 
@@ -190,6 +155,8 @@ history_handler = ConversationHandler(
         YEARLY: [CallbackQueryHandler(yearly_handler)],
     },
     fallbacks=[CommandHandler("cancel", cancel_history)],
+    name="history_handler",
+    persistent=True,
     per_message=False,
 )
 
@@ -210,6 +177,8 @@ settings_handler = ConversationHandler(
         RESET_DATA_CONFIRM: [CallbackQueryHandler(reset_data_confirm_handler)],
     },
     fallbacks=[CommandHandler("cancel", cancel_settings)],
+    name="settings_handler",
+    persistent=True,
     per_message=False,
 )
 
@@ -224,40 +193,97 @@ budget_handler = ConversationHandler(
         ],
     },
     fallbacks=[CommandHandler("cancel", cancel_budget)],
+    name="budget_handler",
+    persistent=True,
     per_message=False,
 )
 
 application.add_handler(CommandHandler("start", start_command))
 application.add_handler(transaction_handler)
-application.add_handler(recurring_transaction_handler)
 application.add_handler(history_handler)
 application.add_handler(settings_handler)
 application.add_handler(budget_handler)
 
 
-async def run_scheduler(context: ContextTypes.DEFAULT_TYPE):
-    """Run the recurring transactions check."""
-    logger.info("Starting recurring transaction check via JobQueue...")
-    await asyncio.to_thread(check_recurring_transactions)
-    logger.info("Recurring transaction check finished.")
+# --- Lambda Webhook Processor ---
 
-
-def handler(event, context):
-    """AWS Lambda handler for processing Telegram webhook updates."""
-    body = json.loads(event.get("body") or "{}")
-    update = Update.de_json(body, application.bot)
+async def _process_lambda_update(update_data: dict) -> None:
+    """Initialize application if needed and process the incoming update."""
+    if not application._initialized:
+        await application.initialize()
+    update = Update.de_json(update_data, application.bot)
     if update:
-        asyncio.run(application.process_update(update))
+        await application.process_update(update)
+
+
+def handler(event: dict, context: Any = None) -> dict:
+    """
+    AWS Lambda entrypoint for processing incoming Telegram webhook requests
+    from API Gateway (HTTP/REST) or Lambda Function URL.
+    """
+    headers = event.get("headers") or {}
+    # Lowercase headers for case-insensitive lookup
+    normalized_headers = {k.lower(): v for k, v in headers.items()}
+
+    # Verify secret token if configured
+    secret_token = os.getenv("SECRET_TOKEN")
+    if secret_token:
+        received_token = normalized_headers.get("x-telegram-bot-api-secret-token")
+        if received_token != secret_token:
+            logger.warning("Unauthorized webhook request: secret token mismatch.")
+            return {
+                "statusCode": 403,
+                "headers": {"Content-Type": "application/json"},
+                "body": json.dumps({"error": "Forbidden: invalid secret token"}),
+            }
+
+    # Extract and decode request body
+    body_raw = event.get("body")
+    if not body_raw:
+        return {
+            "statusCode": 400,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({"error": "Missing body"}),
+        }
+
+    if event.get("isBase64Encoded"):
+        body_str = base64.b64decode(body_raw).decode("utf-8")
+    elif isinstance(body_raw, dict):
+        body_str = json.dumps(body_raw)
+    else:
+        body_str = body_raw
+
+    try:
+        update_data = json.loads(body_str)
+    except json.JSONDecodeError as err:
+        logger.error("Failed to parse request JSON: %s", err)
+        return {
+            "statusCode": 400,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({"error": "Invalid JSON"}),
+        }
+
+    try:
+        asyncio.run(_process_lambda_update(update_data))
+    except Exception as exc:
+        logger.error("Error processing update: %s", exc, exc_info=True)
+        return {
+            "statusCode": 500,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({"error": "Internal server error"}),
+        }
+
     return {
         "statusCode": 200,
+        "headers": {"Content-Type": "application/json"},
         "body": json.dumps({"status": "ok"}),
     }
 
 
+# --- Local Development Entrypoint ---
+
 if __name__ == "__main__":
-    logger.info("Starting bot...")
-    # Run recurring check once per hour to ensure it's picked up daily
-    application.job_queue.run_repeating(run_scheduler, interval=3600, first=10)
+    logger.info("Starting Expentrax bot locally...")
 
     WEBHOOK_URL = os.getenv("WEBHOOK_URL")
     PORT = int(os.getenv("PORT", "8000"))
@@ -265,7 +291,7 @@ if __name__ == "__main__":
     SECRET_TOKEN = os.getenv("SECRET_TOKEN")
 
     if WEBHOOK_URL:
-        logger.info(f"Starting bot via webhook on {LISTEN_ADDRESS}:{PORT}...")
+        logger.info("Starting bot via webhook on %s:%s...", LISTEN_ADDRESS, PORT)
         application.run_webhook(
             listen=LISTEN_ADDRESS,
             port=PORT,

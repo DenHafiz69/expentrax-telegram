@@ -1,180 +1,133 @@
-Switching from DynamoDB to **RDS PostgreSQL** introduces networking components to your infrastructure. Unlike DynamoDB (which sits directly on AWS's public API network and relies on IAM), RDS instances must run inside a **Virtual Private Cloud (VPC)** and require structured relational schemas and secret storage for database credentials.
+# AWS Lambda Stateless Deployment Guide
+
+This guide details the deployment of **Expentrax Telegram Bot** to **AWS Lambda** with **Amazon RDS PostgreSQL** (or Supabase/External PostgreSQL), fully stateless session persistence, and webhook integration.
 
 ---
 
-## Updated Infrastructure Architecture
-
-Your Lambda function needs to communicate with a PostgreSQL instance inside a private subnet:
+## 🏛️ Stateless Infrastructure Architecture
 
 ```
-[ Telegram Webhook ] ──> [ API Gateway (HTTP) ] ──> [ Lambda (in VPC Subnet) ]
-                                                          │
-                                         ┌────────────────┴────────────────┐
-                                         ▼                                 ▼
-                             [ Security Group ]                 [ Secrets Manager ]
-                                     │                        (DB Host, User, Pass)
-                                     ▼
-                        [ RDS PostgreSQL (Private) ]
-
-```
-
----
-
-## Updated Terraform Blueprint (`rds.tf` & `network.tf`)
-
-### 1. `network.tf` (VPC & Subnets)
-
-* **Purpose:** Defines an isolated networking layer. RDS must sit in private subnets across at least two Availability Zones.
-* **Pseudocode Structure:**
-```hcl
-resource "aws_vpc" "expentrax_vpc" {
-  cidr_block           = "10.0.0.0/16"
-  enable_dns_hostnames = true
-}
-
-# Two private subnets in different AZs for RDS multi-AZ requirements
-resource "aws_subnet" "private_a" { ... }
-resource "aws_subnet" "private_b" { ... }
-
-# Subnet group telling RDS where it is allowed to launch instances
-resource "aws_db_subnet_group" "rds_subnet_group" {
-  name       = "expentrax-db-subnet-group"
-  subnet_ids = [aws_subnet.private_a.id, aws_subnet.private_b.id]
-}
-
-```
-
-
-
-### 2. `security.tf` (Firewall Rules)
-
-* **Purpose:** Controls network access. Lambda must be granted explicit outbound access to talk to RDS on port `5432`.
-* **Pseudocode Structure:**
-```hcl
-# Security group for Lambda
-resource "aws_security_group" "lambda_sg" {
-  name   = "expentrax-lambda-sg"
-  vpc_id = aws_vpc.expentrax_vpc.id
-}
-
-# Security group for RDS (Only allows inbound port 5432 from lambda_sg)
-resource "aws_security_group" "rds_sg" {
-  name   = "expentrax-rds-sg"
-  vpc_id = aws_vpc.expentrax_vpc.id
-
-  ingress {
-    from_port       = 5432
-    to_port         = 5432
-    protocol        = "tcp"
-    security_groups = [aws_security_group.lambda_sg.id]
-  }
-}
-
-```
-
-
-
-### 3. `rds.tf` (PostgreSQL Database)
-
-* **Purpose:** Provisions a low-cost, single-AZ PostgreSQL instance suitable for a small application.
-* **Pseudocode Structure:**
-```hcl
-resource "aws_db_instance" "expentrax_postgres" {
-  identifier             = "expentrax-db"
-  allocated_storage      = 20
-  engine                 = "postgres"
-  engine_version         = "15" # Or latest stable version
-  instance_class         = "db.t4g.micro" # Cost-effective instance type
-  db_name                = "expentrax"
-  username               = "expentrax_admin"
-  password               = var.db_password # Sourced securely from TF variables or Random Password resource
-
-  db_subnet_group_name   = aws_db_subnet_group.rds_subnet_group.name
-  vpc_security_group_ids = [aws_security_group.rds_sg.id]
-  skip_final_snapshot    = true # Set false for production data retention
-  publicly_accessible    = false
-}
-
-```
-
-
-
-### 4. Updated `lambda.tf` (VPC Configuration & Secrets)
-
-* **Purpose:** Lambda must now be attached to the VPC to reach PostgreSQL and given database connection details via environment variables.
-* **Pseudocode Changes:**
-```hcl
-resource "aws_lambda_function" "expentrax_bot" {
-  # ... previous Lambda configs ...
-
-  # Attach Lambda to your VPC
-  vpc_config {
-    subnet_ids         = [aws_subnet.private_a.id, aws_subnet.private_b.id]
-    security_group_ids = [aws_security_group.lambda_sg.id]
-  }
-
-  environment {
-    variables = {
-      DB_HOST             = aws_db_instance.expentrax_postgres.address
-      DB_PORT             = "5432"
-      DB_NAME             = aws_db_instance.expentrax_postgres.db_name
-      TELEGRAM_SECRET_ARN = aws_secretsmanager_secret.telegram_bot_token.arn
-      DB_SECRET_ARN       = aws_secretsmanager_secret.db_credentials.arn
-    }
-  }
-}
-
-# Requires the AWS Managed Policy for Lambda VPC Access attached to execution role:
-# AWSLambdaVPCAccessExecutionRole (allows Lambda to create ENIs in the VPC)
-
-```
-
-
-
----
-
-## Database Schema Design (PostgreSQL)
-
-Unlike DynamoDB's single-table or document approach, PostgreSQL uses structured tables connected with foreign keys.
-
-```sql
--- Users table
-CREATE TABLE users (
-    user_id BIGINT PRIMARY KEY, -- Telegram Chat/User ID
-    username VARCHAR(100),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- Categories table
-CREATE TABLE categories (
-    category_id SERIAL PRIMARY KEY,
-    name VARCHAR(50) NOT NULL UNIQUE
-);
-
--- Expenses table
-CREATE TABLE expenses (
-    expense_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id BIGINT REFERENCES users(user_id) ON DELETE CASCADE,
-    category_id INT REFERENCES categories(category_id),
-    amount NUMERIC(12, 2) NOT NULL,
-    description TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
+                                      ┌────────────────────────────────────────────────┐
+                                      │                   AWS VPC                      │
+                                      │                                                │
+[ Telegram Webhook ]                  │   ┌────────────────────────────────────────┐   │
+        │                             │   │          Private App Subnet            │   │
+        │ HTTPS POST                  │   │                                        │   │
+        ▼                             │   │   ┌────────────────────────────────┐   │   │
+[ API Gateway / HTTP API ] ───────────────┼──>│ AWS Lambda (main.handler)      │   │   │
+  (or Lambda Function URL)            │   │   │  • Initializes Application     │   │   │
+                                      │   │   │  • Uses SQLAlchemyPersistence  │   │   │
+                                      │   │   └───────────────┬────────────────┘   │   │
+                                      │   └───────────────────┼────────────────────┘   │
+                                      │                       │                        │
+                                      │   ┌───────────────────┼────────────────────┐   │
+                                      │   │          Private DB Subnet             │   │
+                                      │   │                   ▼                    │   │
+                                      │   │   ┌────────────────────────────────┐   │   │
+                                      │   │   │ RDS PostgreSQL (expentrax-db)  │   │   │
+                                      │   │   │  • Transactions & Budgets      │   │   │
+                                      │   │   │  • Bot Conversation States     │   │   │
+                                      │   │   │  • Bot User Session Data       │   │   │
+                                      │   │   └────────────────────────────────┘   │   │
+                                      │   └────────────────────────────────────────┘   │
+                                      └────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Critical Resume & Interview Considerations
+## 🔑 How Stateless Execution Works
 
-1. **VPC Cold Start Overhead:** When Lambda runs inside a VPC to talk to RDS, AWS creates Elastic Network Interfaces (ENIs). While AWS Hyperplane has largely reduced VPC cold starts, it is still a key architectural point to discuss in interviews.
-2. **Connection Pooling:** PostgreSQL has hard connection limits. Lambdas scale up instantly by opening new instances, which can easily exhaust database connections. In production, an **RDS Proxy** (`aws_db_proxy`) sits between Lambda and RDS to pool connections efficiently.
-3. **Cost Factor:** DynamoDB has a generous perpetual free tier for small projects ($0/month idle). RDS instances (e.g., `db.t4g.micro`) run 24/7 and cost around **$12–$15/month** after the 12-month AWS Free Tier expires.
+In AWS Lambda, instances scale up on demand, recycle, and do not share in-memory state across webhook invocations.
+
+1. **Custom `SQLAlchemyPersistence`**: All multi-step `ConversationHandler` states (e.g. `/transaction`, `/budget`, `/settings`) and active user session data (`context.user_data`) are stored directly in PostgreSQL tables (`bot_persistence_conversations` and `bot_persistence_user_data`).
+2. **Instant Reload**: When a user clicks an inline button or sends a message, whichever Lambda container processes the request instantly pulls the latest conversation state and user context from PostgreSQL.
+3. **Resilient Connection Pooling**: SQLAlchemy is configured with `pool_pre_ping=True` and `pool_recycle=300` so dropped idle connections across warm Lambda invocations are transparently reconnected.
+4. **Webhook Secret Validation**: If `SECRET_TOKEN` is configured, incoming requests are authenticated against the `X-Telegram-Bot-Api-Secret-Token` header.
 
 ---
 
-## Official Documentation References
+## ⚙️ Environment Variables Reference
 
-* [Terraform `aws_db_instance` Resource Documentation](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_instance)
-* [Terraform `aws_vpc` Resource Documentation](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc)
-* [AWS Documentation: Configuring a Lambda Function to Access Resources in a VPC](https://docs.aws.amazon.com/lambda/latest/dg/configuration-vpc.html)
+Configure these environment variables in your AWS Lambda function settings:
+
+| Variable | Description | Example / Default |
+| :--- | :--- | :--- |
+| `BOT_TOKEN` | Telegram Bot token from @BotFather *(or use `TELEGRAM_SECRET_ARN`)* | `123456789:ABCdef...` |
+| `TELEGRAM_SECRET_ARN` | AWS Secrets Manager ARN storing the Bot Token | `arn:aws:secretsmanager:...` |
+| `DATABASE_URL` | Full PostgreSQL connection string *(optional if using DB_HOST)* | `postgresql://user:pass@host:5432/expentrax` |
+| `DB_HOST` | RDS PostgreSQL Host endpoint | `expentrax-db.xxxx.us-east-1.rds.amazonaws.com` |
+| `DB_PORT` | RDS PostgreSQL Port | `5432` |
+| `DB_NAME` | Database name | `expentrax` |
+| `DB_USER` | Database username *(optional if using `DB_SECRET_ARN`)* | `expentrax_admin` |
+| `DB_PASSWORD` | Database password *(optional if using `DB_SECRET_ARN`)* | `supersecretpassword` |
+| `DB_SECRET_ARN` | AWS Secrets Manager ARN containing JSON `{"username": "...", "password": "..."}` | `arn:aws:secretsmanager:...` |
+| `SECRET_TOKEN` | Pre-shared webhook secret token configured in Telegram `setWebhook` | `random_uuid_string` |
+
+---
+
+## 📦 Packaging & Deployment
+
+### Option A: Zip Archive Deployment
+
+1. Install dependencies into a build directory:
+   ```bash
+   mkdir -p build/package
+   pip install --platform manylinux2014_x86_64 --target=build/package --implementation cp --python-version 3.13 --only-binary=:all: -r requirements.txt
+   ```
+2. Copy application source files:
+   ```bash
+   cp -r handlers utils main.py build/package/
+   ```
+3. Zip package:
+   ```bash
+   cd build/package
+   zip -r ../bot_package.zip .
+   cd ../..
+   ```
+4. Deploy the zip file to Lambda with handler set to `main.handler`.
+
+### Option B: Docker Container Image Deployment
+
+Build and push the Lambda container image to AWS ECR:
+
+```dockerfile
+FROM public.ecr.aws/lambda/python:3.13
+
+COPY requirements.txt ${LAMBDA_TASK_ROOT}/
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY handlers/ ${LAMBDA_TASK_ROOT}/handlers/
+COPY utils/ ${LAMBDA_TASK_ROOT}/utils/
+COPY main.py ${LAMBDA_TASK_ROOT}/
+
+CMD [ "main.handler" ]
+```
+
+Build and push:
+```bash
+aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <YOUR_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com
+docker build -t expentrax-bot .
+docker tag expentrax-bot:latest <YOUR_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/expentrax-bot:latest
+docker push <YOUR_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/expentrax-bot:latest
+```
+
+---
+
+## 🔗 Configuring Telegram Webhook
+
+Once your API Gateway or Lambda Function URL is active, register your webhook with Telegram:
+
+```bash
+curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "url": "https://<your-api-gateway-id>.execute-api.us-east-1.amazonaws.com/webhook",
+       "secret_token": "<YOUR_SECRET_TOKEN>",
+       "allowed_updates": ["message", "callback_query"]
+     }'
+```
+
+Verify webhook status:
+```bash
+curl "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getWebhookInfo"
+```
