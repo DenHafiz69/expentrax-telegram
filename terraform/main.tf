@@ -10,6 +10,10 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.5"
     }
+    null = {
+      source  = "hashicorp/null"
+      version = "~> 3.0"
+    }
   }
 }
 
@@ -391,4 +395,24 @@ output "webhook_url" {
 output "db_endpoint" {
   description = "RDS PostgreSQL connection endpoint"
   value       = aws_db_instance.expentrax_postgres.address
+}
+
+# ==============================================================================
+# 8. TELEGRAM WEBHOOK REGISTRATION
+# ==============================================================================
+
+resource "null_resource" "set_telegram_webhook" {
+  triggers = {
+    webhook_url = aws_apigatewayv2_stage.default_stage.invoke_url
+  }
+
+  provisioner "local-exec" {
+    command = "curl -s -X POST 'https://api.telegram.org/bot${var.telegram_bot_token}/setWebhook?url=${aws_apigatewayv2_stage.default_stage.invoke_url}webhook'"
+  }
+
+  depends_on = [
+    aws_apigatewayv2_stage.default_stage,
+    aws_apigatewayv2_route.webhook_route,
+    aws_lambda_permission.apigw_invoke,
+  ]
 }

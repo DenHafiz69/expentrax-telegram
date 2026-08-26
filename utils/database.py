@@ -1,6 +1,21 @@
 from datetime import datetime
 from typing import List, Optional
-from sqlalchemy import create_engine, String, Float, Integer, DateTime, Text, select, delete, update, ForeignKey, func, case, extract, and_
+from sqlalchemy import (
+    create_engine,
+    String,
+    Float,
+    Integer,
+    DateTime,
+    Text,
+    select,
+    delete,
+    update,
+    ForeignKey,
+    func,
+    case,
+    extract,
+    and_,
+)
 from sqlalchemy.orm import DeclarativeBase, Session, mapped_column, Mapped, relationship
 import os
 import logging
@@ -62,30 +77,27 @@ engine = init_connection_pool()
 class Base(DeclarativeBase):
     pass
 
+
 # --- Model Definitions ---
 
 
 class User(Base):
-    __tablename__ = 'users'
+    __tablename__ = "users"
     id: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[Optional[str]] = mapped_column(String, unique=True)
-    currency: Mapped[Optional[str]] = mapped_column(String(5), default='RM')
+    currency: Mapped[Optional[str]] = mapped_column(String(5), default="RM")
 
     transactions: Mapped[List["Transaction"]] = relationship(
-        back_populates="user",
-        cascade="all, delete-orphan"
+        back_populates="user", cascade="all, delete-orphan"
     )
     recurring_transactions: Mapped[List["RecurringTransaction"]] = relationship(
-        back_populates="user",
-        cascade="all, delete-orphan"
+        back_populates="user", cascade="all, delete-orphan"
     )
     custom_categories: Mapped[List["CustomCategory"]] = relationship(
-        back_populates="user",
-        cascade="all, delete-orphan"
+        back_populates="user", cascade="all, delete-orphan"
     )
     budget: Mapped[List["Budget"]] = relationship(
-        back_populates="user",
-        cascade="all, delete-orphan"
+        back_populates="user", cascade="all, delete-orphan"
     )
 
     def __repr__(self):
@@ -93,7 +105,7 @@ class User(Base):
 
 
 class Transaction(Base):
-    __tablename__ = 'transactions'
+    __tablename__ = "transactions"
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     type_of_transaction: Mapped[str] = mapped_column(String(10))
@@ -109,7 +121,7 @@ class Transaction(Base):
 
 
 class DefaultCategory(Base):
-    __tablename__ = 'default_categories'
+    __tablename__ = "default_categories"
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(50), unique=True)
     type_of_transaction: Mapped[str] = mapped_column(String(10))
@@ -119,7 +131,7 @@ class DefaultCategory(Base):
 
 
 class CustomCategory(Base):
-    __tablename__ = 'custom_categories'
+    __tablename__ = "custom_categories"
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(50))
     type_of_transaction: Mapped[str] = mapped_column(String(10))
@@ -127,11 +139,13 @@ class CustomCategory(Base):
     user: Mapped["User"] = relationship(back_populates="custom_categories")
 
     def __repr__(self):
-        return f"CustomCategory(id={self.id}, name='{self.name}', user_id={self.user_id})"
+        return (
+            f"CustomCategory(id={self.id}, name='{self.name}', user_id={self.user_id})"
+        )
 
 
 class Budget(Base):
-    __tablename__ = 'budget'
+    __tablename__ = "budget"
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     budgeted_amount: Mapped[float] = mapped_column(Float)
@@ -146,7 +160,7 @@ class Budget(Base):
 
 
 class RecurringTransaction(Base):
-    __tablename__ = 'recurring_transactions'
+    __tablename__ = "recurring_transactions"
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     type_of_transaction: Mapped[str] = mapped_column(String(10))
@@ -157,8 +171,7 @@ class RecurringTransaction(Base):
     frequency: Mapped[str] = mapped_column(String(10))
     start_date: Mapped[datetime] = mapped_column(DateTime)
     end_date: Mapped[Optional[datetime]] = mapped_column(DateTime)
-    user: Mapped["User"] = relationship(
-        back_populates="recurring_transactions")
+    user: Mapped["User"] = relationship(back_populates="recurring_transactions")
 
     def __repr__(self):
         return f"RecurringTransaction(id={self.id}, user_id={self.user_id})"
@@ -178,15 +191,13 @@ def init_db():
         Base.metadata.create_all(bind=engine)
         _db_initialized = True
 
+
 # --- Database Functions (unchanged) ---
 
 
 def save_user(id, username):
     with Session(engine) as session:
-        user = User(
-            id=id,
-            username=username
-        )
+        user = User(id=id, username=username)
         session.add(user)
         session.commit()
     logger.info("User saved to database: %s", user.username)
@@ -199,7 +210,7 @@ def save_transaction(
     description: str,
     timestamp: datetime,
     category_id: int,
-    category_type: str
+    category_type: str,
 ):
     transaction = Transaction(
         user_id=user_id,
@@ -208,7 +219,7 @@ def save_transaction(
         description=description,
         timestamp=timestamp,
         category_id=category_id,
-        category_type=category_type
+        category_type=category_type,
     )
     with Session(engine) as session:
         session.add(transaction)
@@ -224,7 +235,7 @@ def save_recurring_transaction(
     category_type: str,
     frequency: str,
     start_date: datetime,
-    end_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None,
 ):
     recurring_transaction = RecurringTransaction(
         user_id=user_id,
@@ -235,7 +246,7 @@ def save_recurring_transaction(
         category_type=category_type,
         frequency=frequency,
         start_date=start_date,
-        end_date=end_date
+        end_date=end_date,
     )
     with Session(engine) as session:
         session.add(recurring_transaction)
@@ -262,57 +273,60 @@ def get_recent_transactions(user_id: int, limit=3):
 
 
 def get_summary_periods(user_id: int, period: str):
-    stmt = select(Transaction.timestamp).distinct().where(
-        Transaction.user_id == user_id)
+    stmt = (
+        select(Transaction.timestamp).distinct().where(Transaction.user_id == user_id)
+    )
     with Session(engine) as session:
         distinct_timestamp = session.execute(stmt).scalars().all()
         if period == "yearly":
-            return sorted({d.strftime('%Y') for d in distinct_timestamp}, reverse=True)
+            return sorted({d.strftime("%Y") for d in distinct_timestamp}, reverse=True)
         elif period == "monthly":
-            return sorted({d.strftime('%b %Y') for d in distinct_timestamp}, reverse=True)
+            return sorted(
+                {d.strftime("%b %Y") for d in distinct_timestamp}, reverse=True
+            )
         elif period == "weekly":
-            return sorted({d.strftime('Week %U %Y') for d in distinct_timestamp}, reverse=True)
+            return sorted(
+                {d.strftime("Week %U %Y") for d in distinct_timestamp}, reverse=True
+            )
 
 
-def get_period_total(user_id: int, period_type: str, target_year: int, target_month: int = None, target_week: int = None):
+def get_period_total(
+    user_id: int,
+    period_type: str,
+    target_year: int,
+    target_month: int = None,
+    target_week: int = None,
+):
     income_amount = case(
-        (Transaction.type_of_transaction == "income", Transaction.amount),
-        else_=0
+        (Transaction.type_of_transaction == "income", Transaction.amount), else_=0
     )
     expense_amount = case(
-        (Transaction.type_of_transaction == "expense", Transaction.amount),
-        else_=0
+        (Transaction.type_of_transaction == "expense", Transaction.amount), else_=0
     )
     stmt = select(
-        extract('year', Transaction.timestamp).label("year"),
+        extract("year", Transaction.timestamp).label("year"),
         func.sum(income_amount).label("total_income"),
-        func.sum(expense_amount).label("total_expense")
+        func.sum(expense_amount).label("total_expense"),
     )
     where_conditions = [
         Transaction.user_id == user_id,
-        extract('year', Transaction.timestamp) == target_year
+        extract("year", Transaction.timestamp) == target_year,
     ]
-    group_by_columns = [extract('year', Transaction.timestamp)]
-    if period_type == 'month':
+    group_by_columns = [extract("year", Transaction.timestamp)]
+    if period_type == "month":
         if not target_month:
-            raise ValueError(
-                "target_month is required for 'month' period type")
-        stmt = stmt.add_columns(
-            extract('month', Transaction.timestamp).label("month"))
-        where_conditions.append(
-            extract('month', Transaction.timestamp) == target_month)
-        group_by_columns.append(extract('month', Transaction.timestamp))
-    elif period_type == 'week':
+            raise ValueError("target_month is required for 'month' period type")
+        stmt = stmt.add_columns(extract("month", Transaction.timestamp).label("month"))
+        where_conditions.append(extract("month", Transaction.timestamp) == target_month)
+        group_by_columns.append(extract("month", Transaction.timestamp))
+    elif period_type == "week":
         if not target_week:
             raise ValueError("target_week is required for 'week' period type")
-        stmt = stmt.add_columns(
-            extract('week', Transaction.timestamp).label("week"))
-        where_conditions.append(
-            extract('week', Transaction.timestamp) == target_week)
-        group_by_columns.append(extract('week', Transaction.timestamp))
-    elif period_type != 'year':
-        raise ValueError(
-            "Invalid period_type. Choose from 'week', 'month', or 'year'.")
+        stmt = stmt.add_columns(extract("week", Transaction.timestamp).label("week"))
+        where_conditions.append(extract("week", Transaction.timestamp) == target_week)
+        group_by_columns.append(extract("week", Transaction.timestamp))
+    elif period_type != "year":
+        raise ValueError("Invalid period_type. Choose from 'week', 'month', or 'year'.")
     stmt = stmt.where(and_(*where_conditions)).group_by(*group_by_columns)
     with Session(engine) as session:
         result = session.execute(stmt).first()
@@ -321,9 +335,7 @@ def get_period_total(user_id: int, period_type: str, target_year: int, target_mo
 
 def add_custom_category(user_id: int, name: str, type_of_transaction: str):
     category = CustomCategory(
-        user_id=user_id,
-        name=name,
-        type_of_transaction=type_of_transaction
+        user_id=user_id, name=name, type_of_transaction=type_of_transaction
     )
     with Session(engine) as session:
         session.add(category)
@@ -331,15 +343,13 @@ def add_custom_category(user_id: int, name: str, type_of_transaction: str):
 
 
 def get_category_id(category_name: str):
-    stmt = select(DefaultCategory.id).where(
-        DefaultCategory.name == category_name)
+    stmt = select(DefaultCategory.id).where(DefaultCategory.name == category_name)
     with Session(engine) as session:
         result = session.execute(stmt).scalar_one_or_none()
     if result:
         return result
     else:
-        stmt = select(CustomCategory.id).where(
-            CustomCategory.name == category_name)
+        stmt = select(CustomCategory.id).where(CustomCategory.name == category_name)
         with Session(engine) as session:
             result = session.execute(stmt).scalar_one()
         return result
@@ -347,9 +357,11 @@ def get_category_id(category_name: str):
 
 def get_categories_name(type_of_transaction: str, user_id: int = 0):
     stmt_default = select(DefaultCategory.name).where(
-        DefaultCategory.type_of_transaction == type_of_transaction)
+        DefaultCategory.type_of_transaction == type_of_transaction
+    )
     stmt_custom = select(CustomCategory.name).where(
-        CustomCategory.type_of_transaction == type_of_transaction)
+        CustomCategory.type_of_transaction == type_of_transaction
+    )
     with Session(engine) as session:
         default_categories = session.execute(stmt_default).scalars().all()
         custom_categories = session.execute(stmt_custom).scalars().all()
@@ -359,14 +371,16 @@ def get_categories_name(type_of_transaction: str, user_id: int = 0):
 
 def get_category_type(category_id: int):
     stmt_default = select(DefaultCategory.type_of_transaction).where(
-        DefaultCategory.id == category_id)
+        DefaultCategory.id == category_id
+    )
     with Session(engine) as session:
         result = session.execute(stmt_default).scalar_one_or_none()
     if result:
         return result
     else:
         stmt_custom = select(CustomCategory.type_of_transaction).where(
-            CustomCategory.id == category_id)
+            CustomCategory.id == category_id
+        )
         with Session(engine) as session:
             result = session.execute(stmt_custom).scalar_one_or_none()
             return result
@@ -386,22 +400,35 @@ def get_category_name_by_id(id: int):
 
 
 def get_custom_categories_name_and_id(user_id: int, type_of_transaction: str):
-    stmt = select(CustomCategory.name).where(CustomCategory.user_id == user_id).where(
-        CustomCategory.type_of_transaction == type_of_transaction)
+    stmt = (
+        select(CustomCategory.name)
+        .where(CustomCategory.user_id == user_id)
+        .where(CustomCategory.type_of_transaction == type_of_transaction)
+    )
     with Session(engine) as session:
         result = session.execute(stmt).scalars().all()
     return result
 
 
 def delete_category(user_id: int, category_id: int):
-    stmt = delete(CustomCategory).where(CustomCategory.id ==
-                                        category_id).where(CustomCategory.user_id == user_id)
+    stmt = (
+        delete(CustomCategory)
+        .where(CustomCategory.id == category_id)
+        .where(CustomCategory.user_id == user_id)
+    )
     with Session(engine) as session:
         session.execute(stmt)
         session.commit()
 
 
-def set_budget(user_id: int, budgeted_amount: float, category_id: int, category_type: str, month: int, year: int):
+def set_budget(
+    user_id: int,
+    budgeted_amount: float,
+    category_id: int,
+    category_type: str,
+    month: int,
+    year: int,
+):
     with Session(engine) as session:
         existing_budget = session.execute(
             select(Budget).where(
@@ -409,7 +436,7 @@ def set_budget(user_id: int, budgeted_amount: float, category_id: int, category_
                     Budget.user_id == user_id,
                     Budget.category_id == category_id,
                     Budget.month == month,
-                    Budget.year == year
+                    Budget.year == year,
                 )
             )
         ).scalar_one_or_none()
@@ -422,7 +449,7 @@ def set_budget(user_id: int, budgeted_amount: float, category_id: int, category_
                 year=year,
                 month=month,
                 category_id=category_id,
-                category_type=category_type
+                category_type=category_type,
             )
             session.add(new_budget)
         session.commit()
@@ -430,11 +457,7 @@ def set_budget(user_id: int, budgeted_amount: float, category_id: int, category_
 
 def get_budget_by_month(user_id: int, month: int, year: int):
     stmt = select(Budget).where(
-        and_(
-            Budget.user_id == user_id,
-            Budget.month == month,
-            Budget.year == year
-        )
+        and_(Budget.user_id == user_id, Budget.month == month, Budget.year == year)
     )
     with Session(engine) as session:
         return session.execute(stmt).scalars().all()
@@ -443,15 +466,14 @@ def get_budget_by_month(user_id: int, month: int, year: int):
 def get_spend_by_month(user_id: int, month: int, year: int):
     stmt = (
         select(
-            Transaction.category_id,
-            func.sum(Transaction.amount).label("total_spent")
+            Transaction.category_id, func.sum(Transaction.amount).label("total_spent")
         )
         .where(
             and_(
                 Transaction.user_id == user_id,
-                Transaction.type_of_transaction == 'expense',
-                extract('month', Transaction.timestamp) == month,
-                extract('year', Transaction.timestamp) == year
+                Transaction.type_of_transaction == "expense",
+                extract("month", Transaction.timestamp) == month,
+                extract("year", Transaction.timestamp) == year,
             )
         )
         .group_by(Transaction.category_id)
@@ -461,30 +483,21 @@ def get_spend_by_month(user_id: int, month: int, year: int):
 
 
 def set_currency(user_id: int, currency_symbol: str):
-    stmt = (
-        update(User)
-        .where(User.id == user_id)
-        .values(currency=currency_symbol)
-    )
+    stmt = update(User).where(User.id == user_id).values(currency=currency_symbol)
     with Session(engine) as session:
         session.execute(stmt)
         session.commit()
 
 
 def get_currency(user_id: int) -> str:
-    stmt = (
-        select(User.currency)
-        .where(User.id == user_id)
-    )
+    stmt = select(User.currency).where(User.id == user_id)
     with Session(engine) as session:
         return session.execute(stmt).scalar_one()
 
 
 def delete_user_data(user_id: int):
     with Session(engine) as session:
-        session.execute(delete(Transaction).where(
-            Transaction.user_id == user_id))
-        session.execute(delete(CustomCategory).where(
-            CustomCategory.user_id == user_id))
+        session.execute(delete(Transaction).where(Transaction.user_id == user_id))
+        session.execute(delete(CustomCategory).where(CustomCategory.user_id == user_id))
         session.execute(delete(Budget).where(Budget.user_id == user_id))
         session.commit()

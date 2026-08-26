@@ -100,13 +100,34 @@ if not BOT_TOKEN:
 
 # State definitions
 TYPE, AMOUNT, DESCRIPTION, CATEGORY = range(4)
-RECURRING_TYPE, RECURRING_AMOUNT, RECURRING_DESCRIPTION, RECURRING_CATEGORY, RECURRING_FREQUENCY, RECURRING_START_DATE, RECURRING_END_DATE = range(
-    7)
+(
+    RECURRING_TYPE,
+    RECURRING_AMOUNT,
+    RECURRING_DESCRIPTION,
+    RECURRING_CATEGORY,
+    RECURRING_FREQUENCY,
+    RECURRING_START_DATE,
+    RECURRING_END_DATE,
+) = range(7)
 CHOICE, SUMMARY, WEEKLY, MONTHLY, YEARLY = range(5)
-SETTINGS_CHOICE, ADD_CATEGORY, DATABASE_ACTION, VIEW_CATEGORIES, DELETE_CATEGORIES, SET_CURRENCY, RESET_DATA, RESET_DATA_CONFIRM = range(
-    8)
-BUDGET_CHOICE, MONTH_SELECTION, CATEGORY_SELECTION, AMOUNT_INPUT, CHANGE_CATEGORY, CHANGE_AMOUNT = range(
-    6)
+(
+    SETTINGS_CHOICE,
+    ADD_CATEGORY,
+    DATABASE_ACTION,
+    VIEW_CATEGORIES,
+    DELETE_CATEGORIES,
+    SET_CURRENCY,
+    RESET_DATA,
+    RESET_DATA_CONFIRM,
+) = range(8)
+(
+    BUDGET_CHOICE,
+    MONTH_SELECTION,
+    CATEGORY_SELECTION,
+    AMOUNT_INPUT,
+    CHANGE_CATEGORY,
+    CHANGE_AMOUNT,
+) = range(6)
 
 # Initialize the database
 init_db()
@@ -120,12 +141,14 @@ transaction_handler = ConversationHandler(
     states={
         TYPE: [CallbackQueryHandler(type_handler)],
         AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, amount_handler)],
-        DESCRIPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, description_handler)],
+        DESCRIPTION: [
+            MessageHandler(filters.TEXT & ~filters.COMMAND, description_handler)
+        ],
         CATEGORY: [
             CallbackQueryHandler(
-                category_handler, pattern="^(?!back_to_description).*$"),
-            CallbackQueryHandler(
-                back_handler, pattern="^back_to_description.*$"),
+                category_handler, pattern="^(?!back_to_description).*$"
+            ),
+            CallbackQueryHandler(back_handler, pattern="^back_to_description.*$"),
         ],
     },
     fallbacks=[CommandHandler("cancel", cancel_transaction)],
@@ -136,12 +159,22 @@ recurring_transaction_handler = ConversationHandler(
     entry_points=[CommandHandler("recurring", start_recurring_transaction)],
     states={
         RECURRING_TYPE: [CallbackQueryHandler(type_handler_recurring)],
-        RECURRING_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, amount_handler_recurring)],
-        RECURRING_DESCRIPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, description_handler_recurring)],
+        RECURRING_AMOUNT: [
+            MessageHandler(filters.TEXT & ~filters.COMMAND, amount_handler_recurring)
+        ],
+        RECURRING_DESCRIPTION: [
+            MessageHandler(
+                filters.TEXT & ~filters.COMMAND, description_handler_recurring
+            )
+        ],
         RECURRING_CATEGORY: [CallbackQueryHandler(category_handler_recurring)],
         RECURRING_FREQUENCY: [CallbackQueryHandler(frequency_handler)],
-        RECURRING_START_DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, start_date_handler)],
-        RECURRING_END_DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, end_date_handler)],
+        RECURRING_START_DATE: [
+            MessageHandler(filters.TEXT & ~filters.COMMAND, start_date_handler)
+        ],
+        RECURRING_END_DATE: [
+            MessageHandler(filters.TEXT & ~filters.COMMAND, end_date_handler)
+        ],
     },
     fallbacks=[CommandHandler("cancel", cancel_recurring_transaction)],
     per_message=False,
@@ -167,12 +200,14 @@ settings_handler = ConversationHandler(
         ADD_CATEGORY: [CallbackQueryHandler(add_category)],
         DATABASE_ACTION: [
             MessageHandler(filters.TEXT & ~filters.COMMAND, database_action),
-            CallbackQueryHandler(database_action)
+            CallbackQueryHandler(database_action),
         ],
         VIEW_CATEGORIES: [CallbackQueryHandler(view_categories)],
         DELETE_CATEGORIES: [CallbackQueryHandler(delete_categories)],
-        SET_CURRENCY: [MessageHandler(filters.TEXT & ~filters.COMMAND, set_currency_handler)],
-        RESET_DATA_CONFIRM: [CallbackQueryHandler(reset_data_confirm_handler)]
+        SET_CURRENCY: [
+            MessageHandler(filters.TEXT & ~filters.COMMAND, set_currency_handler)
+        ],
+        RESET_DATA_CONFIRM: [CallbackQueryHandler(reset_data_confirm_handler)],
     },
     fallbacks=[CommandHandler("cancel", cancel_settings)],
     per_message=False,
@@ -184,7 +219,9 @@ budget_handler = ConversationHandler(
         BUDGET_CHOICE: [CallbackQueryHandler(choice_handler)],
         MONTH_SELECTION: [CallbackQueryHandler(month_selection_handler)],
         CATEGORY_SELECTION: [CallbackQueryHandler(category_selection_handler)],
-        AMOUNT_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, amount_input_handler)],
+        AMOUNT_INPUT: [
+            MessageHandler(filters.TEXT & ~filters.COMMAND, amount_input_handler)
+        ],
     },
     fallbacks=[CommandHandler("cancel", cancel_budget)],
     per_message=False,
@@ -197,11 +234,13 @@ application.add_handler(history_handler)
 application.add_handler(settings_handler)
 application.add_handler(budget_handler)
 
+
 async def run_scheduler(context: ContextTypes.DEFAULT_TYPE):
     """Run the recurring transactions check."""
     logger.info("Starting recurring transaction check via JobQueue...")
     await asyncio.to_thread(check_recurring_transactions)
     logger.info("Recurring transaction check finished.")
+
 
 def handler(event, context):
     """AWS Lambda handler for processing Telegram webhook updates."""
@@ -219,7 +258,7 @@ if __name__ == "__main__":
     logger.info("Starting bot...")
     # Run recurring check once per hour to ensure it's picked up daily
     application.job_queue.run_repeating(run_scheduler, interval=3600, first=10)
-    
+
     WEBHOOK_URL = os.getenv("WEBHOOK_URL")
     PORT = int(os.getenv("PORT", "8000"))
     LISTEN_ADDRESS = os.getenv("LISTEN_ADDRESS", "0.0.0.0")
