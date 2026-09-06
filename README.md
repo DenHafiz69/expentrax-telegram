@@ -1,175 +1,190 @@
 # Expentrax: Personal Finance Telegram Bot
 
-[![Python Version](https://img.shields.io/badge/python-3.13%2B-blue.svg)](https://www.python.org/)
-[![Telegram Bot API](https://img.shields.io/badge/Telegram%20Bot%20API-v22.4-blue)](https://core.telegram.org/bots/api)
-[![Database](https://img.shields.io/badge/Database-SQLite%20%7C%20PostgreSQL-green)](https://www.postgresql.org/)
-[![ORM](https://img.shields.io/badge/ORM-SQLAlchemy%202.0-red)](https://www.sqlalchemy.org/)
-[![Deployment](https://img.shields.io/badge/Deployment-Docker%20%2F%20Docker%20Compose-orange)](https://www.docker.com/)
+Expentrax is a personal finance tracker bot for **Telegram**. It allows you to log daily income and expenses, set and monitor category-based monthly budgets, customize categories and currency, and view financial summaries (weekly, monthly, yearly) through interactive Telegram inline menus.
 
-Expentrax is a personal financial tracker built on top of the **Telegram Bot API**. It provides a lightweight, frictionless, and zero-installation approach to managing daily income, expenses, custom categories, budgets, and recurring transactions. 
-
-This project was built from scratch to replace manual tracking methods (such as Google Sheets) and overcome the limitations of proprietary finance tracking apps (which are often platform-restricted, feature-bloated, or paid). Expentrax serves as a capstone portfolio project demonstrating a deep dive into asynchronous programming, database optimization, background scheduling, and containerized deployment in a transition from a Physics background into professional software development.
+The application is built to run both **locally** (via polling or local webhook) and **serverlessly on AWS Lambda** (stateless architecture with PostgreSQL).
 
 ---
 
-## 🏗️ System Architecture
+## 🏛️ System Architecture & How It Works
 
-Expentrax is designed with a modular architecture that cleanly separates routing, business logic, background scheduling, and database access.
-
-```mermaid
-graph TD
-    User([User in Telegram App]) <-->|HTTPS Update / Webhook| TelegramAPI[Telegram Bot API Gateway]
-    TelegramAPI <-->|Webhook / Polling| AppContainer[Expentrax Application]
-    
-    subgraph AppContainer [Python Application Layer]
-        main[main.py: Entrypoint & Router] <--> handlers[Handlers: Conversation State Machines]
-        handlers <--> database[database.py: SQLAlchemy 2.0 ORM]
-        scheduler[scheduler.py: JobQueue Background Checker] -->|Hourly Check| database
-    end
-    
-    database <--> SQLite[(SQLite Database - Local)]
-    database <--> Postgres[(PostgreSQL / Supabase - Production)]
+```
+                                 ┌────────────────────────────────────────────────────────┐
+                                 │                   Telegram Platform                    │
+                                 └───────────────────────────┬────────────────────────────┘
+                                                             │ HTTPS Webhook / Updates
+                                                             ▼
+                                 ┌────────────────────────────────────────────────────────┐
+                                 │           API Gateway / Lambda Function URL            │
+                                 └───────────────────────────┬────────────────────────────┘
+                                                             │
+                                                             ▼
+                                 ┌────────────────────────────────────────────────────────┐
+                                 │                 main.py (AWS Lambda)                   │
+                                 │  • Validates Secret Token                              │
+                                 │  • Deserializes Update                                 │
+                                 │  • Lazy-initializes Application                        │
+                                 └─────────────┬───────────────────────────┬──────────────┘
+                                               │                           │
+                                               ▼                           ▼
+                    ┌──────────────────────────────────┐   ┌──────────────────────────────────┐
+                    │    Conversation State Machines   │   │     utils/persistence.py         │
+                    │        (./handlers/*.py)         │   │   (SQLAlchemyPersistence)        │
+                    │  • /transaction                  │   │  • Loads user_data & conv state  │
+                    │  • /budget                       │   │  • Saves state updates back to DB│
+                    │  • /history                      │   │  • Makes Lambda 100% stateless   │
+                    │  • /settings                     │   └───────────────┬──────────────────┘
+                    └──────────────────┬───────────────┘                   │
+                                       │                                   │
+                                       └─────────────────┬─────────────────┘
+                                                         │
+                                                         ▼
+                                       ┌──────────────────────────────────┐
+                                       │        utils/database.py         │
+                                       │   (SQLAlchemy 2.0 + Engine Pool) │
+                                       │  • pool_pre_ping / pool_recycle  │
+                                       │  • RDS PostgreSQL / Local SQLite │
+                                       └──────────────────────────────────┘
 ```
 
-- **Client Gateway**: Telegram acts as the user interface, routing messages to our application via HTTPS Webhooks (Production) or Polling (Development).
-- **Application Core**: `main.py` parses commands and handles registration of state-driven conversational flow systems.
-- **Feature Handlers**: Each feature is modularized in `./handlers` to isolate code complexity. Large multi-step interactions use `ConversationHandler` to persist state between user replies.
-- **Data Access Layer**: Database queries are abstracted inside `utils/database.py` utilizing the modern SQLAlchemy 2.0 ORM.
-- **Background Scheduler**: A background worker check handles recurring transactions periodically without impeding bot response times.
+### Core Concepts
 
----
+1. **Stateless Conversational UX (`handlers/` + `utils/persistence.py`)**:
+   - Multi-step flows (`/transaction`, `/budget`, `/settings`) use `telegram.ext.ConversationHandler`.
+   - In serverless environments (AWS Lambda), instances are ephemeral and do not share in-memory state.
+   - We implemented a custom `SQLAlchemyPersistence` that automatically stores active conversation steps and `context.user_data` (temporary inputs like amount, selected category, etc.) into the database (`bot_persistence_conversations` and `bot_persistence_user_data`).
+   - Any Lambda instance can handle any step of a user's multi-step interaction seamlessly.
 
-## ⚡ Technical Design Decisions & Lessons Learned
+2. **Non-Blocking Async Database Access (`utils/database.py`)**:
+   - Telegram handlers are asynchronous (`async def`).
+   - Synchronous SQLAlchemy queries are offloaded using `asyncio.to_thread(...)` to ensure database I/O never blocks the event loop.
 
-### 1. Conversational UX & State Machines
-Instead of forcing users to navigate complex forms or type error-prone command sequences, the logging process relies on a state machine pattern implemented via `ConversationHandler`.
-- **Interactive Buttons**: The bot uses `InlineKeyboardButton` and `CallbackQueryHandler` instead of plain text options or rigid keyboard menus. Clickable prompts provide a modern, app-like UI that automatically updates the active message text to eliminate conversation clutter.
-- **Dynamic Keyboards**: Keyboard actions dynamically query the database (e.g., custom categories defined by the specific user) in real-time, displaying immediate, contextual options.
-
-### 2. Multi-Threading & Async Event Loop Optimization
-One of the key bottlenecks when running an asynchronous bot with a SQL backend is that standard database transactions are synchronous (blocking).
-- **The Problem**: If a database query takes 500ms to execute, running it directly on the main event loop blocks all incoming messages for other concurrent users, causing lag.
-- **The Solution**: Every database CRUD helper inside our handlers is offloaded using `asyncio.to_thread`. This runs database interactions in a separate worker thread, keeping the async event loop entirely free to handle incoming network packets and webhook requests.
-
-### 3. Indexed User Lookup for Scale
-To ensure lookups remain extremely fast as the database size increases:
-- Query-level index optimizations (`index=True`) are defined on the `user_id` foreign key columns across the `Transaction`, `Budget`, `RecurringTransaction`, and `CustomCategory` SQLAlchemy tables.
-- This creates structured index trees that reduce search complexity from \(O(N)\) table scans to \(O(\log N)\) lookups.
-
-### 4. Database Engine Agnosticism (SQLite & PostgreSQL)
-To keep the application developer-friendly yet production-ready, the connection pooling layer adapts to its environment:
-- **Local Dev**: Defaults to a single-file, zero-config **SQLite** database.
-- **Production**: Seamlessly connects to a high-concurrency **PostgreSQL** instance (e.g., Supabase) by injecting the `DATABASE_URL` environment variable. 
-- Thanks to SQLAlchemy, no raw SQL scripts or table structures need modification when shifting between engines.
-
-### 5. Production Webhook Architecture
-- **Latency Optimization**: In development, Polling queries Telegram repeatedly. For production deployment, the bot switches to Webhook mode, exposing an internal port via a Tornado-backed HTTP server. 
-- **Security Check**: Every incoming webhook payload is validated against a pre-shared `SECRET_TOKEN` to ensure requests originate strictly from Telegram's secure gateway.
-
----
-
-## 🛠️ Tech Stack & Packages
-
-- **Core Runtime**: Python 3.13
-- **Bot Framework**: `python-telegram-bot[webhooks,job-queue]` (v22.4)
-- **Database Engine**: SQLAlchemy 2.0 ORM, PostgreSQL (via Supabase driver integration), SQLite
-- **Static Typing & Lints**: mypy, black, flake8
-- **Process Orchestration**: Docker & Docker Compose
-- **Scheduling**: APScheduler (embedded via JobQueue)
-
----
-
-## ✨ Features Checklist
-
-- [x] **State-Guided Transaction Logging** (`/transaction`): Prompt-driven flow for income/expense details (type, amount, description, category).
-- [x] **Dynamic Categories Settings** (`/settings`): Create and delete custom transaction categories instantly.
-- [x] **Budgeting Suite** (`/budget`): Set monthly budgets for specific categories and audit progress.
-- [x] **Recurring Ledger Scheduler** (`/recurring`): Add repeating financial entries (daily, weekly, monthly) running on a background clock.
-- [x] **Currency Personalization**: Swap currency notations (e.g., RM, USD, EUR) to customize interface outputs.
-- [x] **Granular Financial History** (`/history`): Instantly query past logs, grouped and aggregated by week, month, or year.
-- [x] **Dockerized Setup**: Multi-stage Docker integration and environment variable routing.
+3. **Resilient Connection Pooling for Lambda**:
+   - Configured with `pool_pre_ping=True` and `pool_recycle=300` so dropped idle connections across warm Lambda invocations are transparently re-established without errors.
+   - Supports AWS Secrets Manager, direct PostgreSQL environment variables (`DATABASE_URL` or `DB_HOST`/`DB_USER`/`DB_PASSWORD`), and local SQLite fallback.
 
 ---
 
 ## 📂 Project Structure
 
 ```bash
-├── data/                    # Local database storage directory (SQLite)
-├── handlers/                # Business logic command handlers
-│   ├── start.py             # Entrypoint message /start
-│   ├── transaction.py       # State machine flow for transactions
-│   ├── recurring.py         # State machine flow for recurring logs
-│   ├── history.py           # Financial reporting and search commands
-│   ├── settings.py          # Dashboard for preferences and custom categories
-│   └── budget.py            # Budget limit set and management handlers
-├── utils/                   # Shared utility modules
-│   ├── database.py          # SQLAlchemy models, initialization and CRUD tasks
-│   ├── scheduler.py         # Automated background checks for recurring actions
-│   └── misc.py              # Parsing and formatting utilities
-├── Dockerfile               # Production multi-stage docker configurations
-├── docker-compose.yml       # Production deployment docker configuration
-├── main.py                  # Main entrypoint; registers routing tables and launches server
-├── requirements.txt         # Project dependencies
-└── pyproject.toml           # Build configurations and package manager targets
+├── handlers/                    # Command logic & conversation state machines
+│   ├── start.py                 # /start command & user registration
+│   ├── transaction.py           # /transaction: Log income or expense
+│   ├── budget.py                # /budget: Set monthly category budget & check status
+│   ├── history.py               # /history: Recent transactions & weekly/monthly/yearly reports
+│   └── settings.py              # /settings: Add/delete categories, change currency, reset data
+├── utils/                       # Shared utility modules
+│   ├── database.py              # SQLAlchemy 2.0 ORM models, connection pool & CRUD queries
+│   ├── persistence.py           # SQLAlchemyPersistence provider for stateless PTB operation
+│   └── misc.py                  # Currency validation regex & list chunking helper
+├── tests/                       # Automated test suite & data seeders
+│   ├── test_stateless_lambda.py # Unit tests for persistence and Lambda webhook handling
+│   ├── populate_db.py           # Seed script for default categories and sample records
+│   └── *.csv                    # Sample seed data
+├── terraform/                   # Infrastructure as Code for AWS deployment
+│   └── main.tf                  # VPC, Subnets, RDS PostgreSQL, Secrets Manager, Lambda config
+├── deploy.md                    # Detailed AWS Lambda & RDS deployment guide
+├── main.py                      # Application entrypoint (Local Polling/Webhook & Lambda handler)
+├── requirements.txt             # Python dependencies
+└── pyproject.toml               # Project metadata & package configurations
 ```
 
 ---
 
-## 🚀 Setup & Local Execution
+## 🤖 Features & Command Reference
 
-### 1. Clone the Repository
-```bash
-git clone https://github.com/DenHafiz69/expentrax-telegram.git
-cd expentrax-telegram
+### 1. `/start` ([`handlers/start.py`](file:///home/denhafiz/Coding/expentrax-telegram/handlers/start.py))
+- Checks if the user exists in the database; creates a new `User` record if not.
+- Sends an introductory menu explaining available commands.
+
+### 2. `/transaction` ([`handlers/transaction.py`](file:///home/denhafiz/Coding/expentrax-telegram/handlers/transaction.py))
+- Guides the user through a 4-step logging wizard:
+  1. **Type**: Choose `💸 Expense` or `💰 Income` via inline buttons.
+  2. **Amount**: Type a number (e.g. `25` or `12.50`, validated via regex).
+  3. **Description**: Text description (e.g., "Grocery shopping").
+  4. **Category**: Dynamic keyboard displaying default + user's custom categories.
+- Saves the transaction to the database with the current timestamp and user's preferred currency symbol.
+
+### 3. `/budget` ([`handlers/budget.py`](file:///home/denhafiz/Coding/expentrax-telegram/handlers/budget.py))
+- **Set/Change Budget**: Pick the month (current or next month), choose an expense category, and enter the budgeted target amount.
+- **Check Budget**: Calculates total spent vs. budgeted amount per category for the current month and generates a clean summary with visual indicators (`✅` or `❌`).
+
+### 4. `/history` ([`handlers/history.py`](file:///home/denhafiz/Coding/expentrax-telegram/handlers/history.py))
+- **Recent (`Recent ✅`)**: Displays the last 3 logged transactions with category, description, and amount.
+- **Summary (`Summary 📊`)**: Aggregates total income, total expenses, and net balance over **Weekly**, **Monthly**, or **Yearly** periods.
+
+### 5. `/settings` ([`handlers/settings.py`](file:///home/denhafiz/Coding/expentrax-telegram/handlers/settings.py))
+- **Add Category**: Create custom income or expense categories.
+- **View Categories**: List all active categories.
+- **Delete Categories**: Remove user-created custom categories.
+- **Set Currency**: Set personal currency notation (e.g., `RM`, `$`, `€`, `£`, `¥`).
+- **Reset Data**: Confirmation dialog to wipe all transactions, custom categories, and budgets for the user.
+
+---
+
+## ⚙️ Environment Variables
+
+Create a `.env` file in the root directory (based on `.env-example`):
+
+```env
+# Required for running the bot
+BOT_TOKEN=123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ
+
+# Optional: Webhook configuration (if not using Polling)
+WEBHOOK_URL=https://your-domain-or-ngrok.dev
+SECRET_TOKEN=your_secure_random_secret_token
+
+# Optional: Database configuration (defaults to SQLite if omitted)
+# DATABASE_URL=postgresql://user:password@localhost:5432/expentrax
+# DB_HOST=localhost
+# DB_PORT=5432
+# DB_NAME=expentrax
+# DB_USER=postgres
+# DB_PASSWORD=yourpassword
 ```
 
-### 2. Configure Virtual Environment (uv / pip)
-Using standard `venv`:
+---
+
+## 🚀 Local Development
+
+### 1. Setup Virtual Environment
 ```bash
+# Using uv (fastest)
+uv venv
+source .venv/bin/activate
+uv pip install -r requirements.txt
+
+# Or using standard python venv
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 3. Setup Environment Configuration
-Create a `.env` file in the root of the workspace:
-```env
-BOT_TOKEN=your_telegram_bot_token_from_botfather
-
-# Optional (Local defaults to SQLite):
-# DATABASE_URL=postgresql://user:password@host:port/dbname
+### 2. Run Database Migrations / Seed Data (Optional)
+```bash
+python -c "from utils.database import init_db; init_db()"
+# Seed default categories and sample records
+python tests/populate_db.py
 ```
 
-### 4. Run Locally (Polling Mode)
+### 3. Start the Bot (Polling Mode)
 ```bash
 python main.py
 ```
 
 ---
 
-## 🐳 Containerized Deployment (Docker)
+## 🧪 Running Automated Tests
 
-To run the containerized application stack locally or on a VPS:
+Run the test suite to verify stateless persistence, conversation transitions, and the Lambda webhook handler:
 
-### 1. Setup Docker Environment Variables
-Ensure the following variables are present in your production environment or `.env` file:
-```env
-BOT_TOKEN=your_telegram_bot_token
-WEBHOOK_URL=https://your-public-domain.com
-SECRET_TOKEN=your_custom_secure_webhook_secret_token
-DATABASE_URL=your_postgres_database_url
-```
-
-### 2. Launch the Application Stack
 ```bash
-docker-compose up --build -d
+python -m unittest tests/test_stateless_lambda.py -v
 ```
-The application will listen on port `8000`. Set up your reverse proxy (e.g., Nginx, Traefik, Cloudflare Tunnels) to direct traffic from `https://your-public-domain.com` to `localhost:8000`.
 
 ---
 
-## 🏆 Key Achievements & Portfolio Highlights
-- Built a **non-blocking asynchronous backend** that handles database queries in worker threads to prevent bot lag.
-- Achieved **engine flexibility** that swaps storage from offline SQLite to scale-ready PostgreSQL using SQLAlchemy.
-- Implemented **state machine conversations** using `ConversationHandler` along with dynamic inline keyboards.
-- Integrated an **automated background task scheduler** to process recurring user payments and items.
+## ☁️ Deploying to AWS Lambda
+
+See [`deploy.md`](file:///home/denhafiz/Coding/expentrax-telegram/deploy.md) for full instructions on deploying via AWS Lambda and configuring Telegram Webhooks with Amazon RDS PostgreSQL.

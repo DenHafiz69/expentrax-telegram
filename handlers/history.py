@@ -1,11 +1,17 @@
 import asyncio
-from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
-from telegram.ext import ContextTypes, ConversationHandler
-
-from utils.database import get_period_total, get_recent_transactions, get_summary_periods, get_currency, get_category_name_by_id
+import logging
 from datetime import datetime
 
-import logging
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import ContextTypes, ConversationHandler
+
+from utils.database import (
+    get_category_name_by_id,
+    get_currency,
+    get_period_total,
+    get_recent_transactions,
+    get_summary_periods,
+)
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
@@ -32,8 +38,9 @@ async def start_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    logger.info("History conversation started, User: %s",
-                update.message.from_user.first_name)
+    logger.info(
+        "History conversation started, User: %s", update.message.from_user.first_name
+    )
 
     await update.message.reply_text(
         "📋 Welcome to the transaction history! What would you like to do?",
@@ -49,8 +56,7 @@ async def history_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await query.answer()
     choice = query.data
 
-    logger.info("User choice: %s, User: %s",
-                choice, query.from_user.first_name)
+    logger.info("User choice: %s, User: %s", choice, query.from_user.first_name)
 
     if choice == "recent":
         return await recent_handler(update, context)
@@ -67,8 +73,7 @@ async def history_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         reply_markup = InlineKeyboardMarkup(keyboard)
 
         await query.edit_message_text(
-            text="📅 Please specify a summary period:",
-            reply_markup=reply_markup
+            text="📅 Please specify a summary period:", reply_markup=reply_markup
         )
 
         return SUMMARY
@@ -91,8 +96,7 @@ async def recent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     # Read the transactions from database
     transactions = await asyncio.to_thread(get_recent_transactions, user_id)
-    logger.info("Recent transactions: %s, User: %s",
-                transactions, user.first_name)
+    logger.info("Recent transactions: %s, User: %s", transactions, user.first_name)
 
     if not transactions:
         await query.edit_message_text(
@@ -103,8 +107,12 @@ async def recent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     message = "📄 *Here are your recent transactions:*\n\n"
     for transaction in transactions:
-        type_prefix = "💰 Income" if transaction.type_of_transaction == "income" else "💸 Expense"
-        category_name = await asyncio.to_thread(get_category_name_by_id, transaction.category_id)
+        type_prefix = (
+            "💰 Income" if transaction.type_of_transaction == "income" else "💸 Expense"
+        )
+        category_name = await asyncio.to_thread(
+            get_category_name_by_id, transaction.category_id
+        )
 
         message += (
             f"📅 {transaction.timestamp.strftime('%Y-%m-%d')} | "
@@ -114,9 +122,7 @@ async def recent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             f"{transaction.description}\n"
         )
 
-    await query.edit_message_text(
-        text=message.strip(),
-        parse_mode='Markdown')
+    await query.edit_message_text(text=message.strip(), parse_mode="Markdown")
 
     return ConversationHandler.END
 
@@ -127,23 +133,27 @@ async def summary_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     await query.answer()
     summary_choice = query.data
 
-    logger.info("Summary period: %s, User: %s",
-                summary_choice, query.from_user.first_name)
+    logger.info(
+        "Summary period: %s, User: %s", summary_choice, query.from_user.first_name
+    )
 
     # Read the transactions from database
     user_id = update.effective_chat.id
-    periods = await asyncio.to_thread(get_summary_periods, user_id, summary_choice.lower())
-    context.user_data['periods'] = periods
+    periods = await asyncio.to_thread(
+        get_summary_periods, user_id, summary_choice.lower()
+    )
+    context.user_data["periods"] = periods
 
     row_size = 3
 
     keyboard = [
-        [InlineKeyboardButton(period, callback_data=period)
-         for period in periods[i:i + row_size]]
+        [
+            InlineKeyboardButton(period, callback_data=period)
+            for period in periods[i : i + row_size]
+        ]
         for i in range(0, len(periods), row_size)
     ]
-    keyboard.append([InlineKeyboardButton(
-        "⬅️ Back", callback_data="back_to_summary")])
+    keyboard.append([InlineKeyboardButton("⬅️ Back", callback_data="back_to_summary")])
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     if not periods:
@@ -154,28 +164,25 @@ async def summary_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         return ConversationHandler.END
 
     elif summary_choice == "weekly":
-
         await query.edit_message_text(
             text="📅 Please choose the week you want to view:",
-            reply_markup=reply_markup
+            reply_markup=reply_markup,
         )
 
         return WEEKLY
 
     elif summary_choice == "monthly":
-
         await query.edit_message_text(
             text="📅 Please choose the month you want to view:",
-            reply_markup=reply_markup
+            reply_markup=reply_markup,
         )
 
         return MONTHLY
 
     else:
-
         await query.edit_message_text(
             text="📅 Please choose the year you want to view:",
-            reply_markup=reply_markup
+            reply_markup=reply_markup,
         )
 
         return YEARLY
@@ -187,16 +194,16 @@ async def weekly_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = query.from_user
     user_id = update.effective_chat.id
 
-    user_choice = query.data.split(' ')
+    user_choice = query.data.split(" ")
 
     year_choice, week_choice = user_choice[2], user_choice[1]
 
     week_total = await asyncio.to_thread(
         get_period_total,
         user_id,
-        period_type='week',
+        period_type="week",
         target_year=int(year_choice),
-        target_week=int(week_choice)
+        target_week=int(week_choice),
     )
 
     logger.info("Weekly total: %s, User: %s", week_total, user.first_name)
@@ -210,7 +217,7 @@ async def weekly_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"💰 Total Income: *{currency} {week_total.total_income:.2f}*\n"
         f"💸 Total Expense: *{currency} {week_total.total_expense:.2f}*\n"
         f"💡 Net: *{currency} {net_amount:.2f}* {emoji}",
-        parse_mode='Markdown'
+        parse_mode="Markdown",
     )
 
     return ConversationHandler.END
@@ -222,16 +229,16 @@ async def monthly_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = query.from_user
     user_id = update.effective_chat.id
 
-    user_choice = query.data.split(' ')
+    user_choice = query.data.split(" ")
 
     month_choice, year_choice = user_choice[0], user_choice[1]
 
     month_total = await asyncio.to_thread(
         get_period_total,
         user_id,
-        period_type='month',
+        period_type="month",
         target_year=int(year_choice),
-        target_month=datetime.strptime(month_choice, "%b").month
+        target_month=datetime.strptime(month_choice, "%b").month,
     )
 
     logger.info("Monthly total: %s, User: %s", month_total, user.first_name)
@@ -245,7 +252,7 @@ async def monthly_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"💰 Total Income: *{currency} {month_total.total_income:.2f}*\n"
         f"💸 Total Expense: *{currency} {month_total.total_expense:.2f}*\n"
         f"💡 Net: *{currency} {net_amount:.2f}* {emoji}",
-        parse_mode='Markdown'
+        parse_mode="Markdown",
     )
 
     return ConversationHandler.END
@@ -260,10 +267,7 @@ async def yearly_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     year_choice = query.data
 
     year_total = await asyncio.to_thread(
-        get_period_total,
-        user_id,
-        period_type='year',
-        target_year=int(year_choice)
+        get_period_total, user_id, period_type="year", target_year=int(year_choice)
     )
 
     logger.info("Year total: %s, User: %s", year_total, user.first_name)
@@ -277,13 +281,15 @@ async def yearly_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"💰 Total Income: *{currency} {year_total.total_income:.2f}*\n"
         f"💸 Total Expense: *{currency} {year_total.total_expense:.2f}*\n"
         f"💡 Net: *{currency} {net_amount:.2f}* {emoji}",
-        parse_mode='Markdown'
+        parse_mode="Markdown",
     )
 
     return ConversationHandler.END
 
 
-async def back_history_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def back_history_handler(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int:
     """Handles the back button in the history conversation."""
     query = update.callback_query
     await query.answer()
@@ -302,8 +308,7 @@ async def back_history_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         reply_markup = InlineKeyboardMarkup(keyboard)
 
         await query.edit_message_text(
-            text="📅 Please specify a summary period:",
-            reply_markup=reply_markup
+            text="📅 Please specify a summary period:", reply_markup=reply_markup
         )
 
         return SUMMARY
@@ -314,8 +319,6 @@ async def cancel_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     user = update.message.from_user
     logger.info("User %s canceled the conversation.", user.first_name)
 
-    await update.message.reply_text(
-        "❌ History operation cancelled."
-    )
+    await update.message.reply_text("❌ History operation cancelled.")
 
     return ConversationHandler.END
