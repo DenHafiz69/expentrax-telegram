@@ -1,65 +1,62 @@
 # Import necessary modules
-import os
-import json
-import base64
-import logging
 import asyncio
-from typing import Any, Optional
-from dotenv import load_dotenv
+import base64
+import json
+import logging
+import os
+from typing import Any
 
+from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import (
-    filters,
     ApplicationBuilder,
+    CallbackQueryHandler,
     CommandHandler,
     ConversationHandler,
     MessageHandler,
-    CallbackQueryHandler,
+    filters,
 )
 
-from utils.database import init_db, engine
-from utils.persistence import SQLAlchemyPersistence
-from handlers.start import start_command
-from handlers.transaction import (
-    start_transaction,
-    type_handler,
-    amount_handler,
-    description_handler,
-    category_handler,
-    cancel_transaction,
-    back_handler,
-)
-from handlers.history import (
-    summary_handler,
-    start_history,
-    history_choice,
-    cancel_history,
-    weekly_handler,
-    monthly_handler,
-    yearly_handler,
-    back_history_handler,
-)
-from handlers.settings import (
-    start_settings,
-    categories_handler,
-    add_category,
-    database_action,
-    view_categories,
-    delete_categories,
-    cancel_settings,
-    set_currency_handler,
-    reset_data_confirm_handler,
-    back_settings_handler,
-)
 from handlers.budget import (
-    start_budget,
-    choice_handler,
-    month_selection_handler,
-    category_selection_handler,
     amount_input_handler,
     cancel_budget,
-    back_budget_handler,
+    category_selection_handler,
+    choice_handler,
+    month_selection_handler,
+    start_budget,
 )
+from handlers.history import (
+    cancel_history,
+    history_choice,
+    monthly_handler,
+    start_history,
+    summary_handler,
+    weekly_handler,
+    yearly_handler,
+)
+from handlers.settings import (
+    add_category,
+    cancel_settings,
+    categories_handler,
+    database_action,
+    delete_categories,
+    reset_data_confirm_handler,
+    set_currency_handler,
+    start_settings,
+    view_categories,
+)
+from handlers.start import start_command
+from handlers.transaction import (
+    amount_handler,
+    back_handler,
+    cancel_transaction,
+    category_handler,
+    description_handler,
+    start_transaction,
+    type_handler,
+)
+from utils.database import engine, init_db
+from utils.persistence import SQLAlchemyPersistence
 
 # --- Logging Setup ---
 logging.basicConfig(

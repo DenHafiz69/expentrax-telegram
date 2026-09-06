@@ -1,28 +1,28 @@
-import os
 import json
 import logging
+import os
 from datetime import datetime
-from typing import List, Optional, Any, Dict, Tuple
+
 from sqlalchemy import (
-    create_engine,
-    String,
-    Float,
-    Integer,
     BigInteger,
     DateTime,
-    Text,
-    LargeBinary,
-    select,
-    delete,
-    update,
+    Float,
     ForeignKey,
-    func,
-    case,
-    extract,
+    Integer,
+    LargeBinary,
+    String,
+    Text,
     and_,
+    case,
+    create_engine,
+    delete,
+    extract,
+    func,
+    select,
+    update,
 )
-from sqlalchemy.orm import DeclarativeBase, Session, mapped_column, Mapped, relationship
 from sqlalchemy.engine import URL
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship
 
 # --- Logging Setup ---
 logging.basicConfig(
@@ -131,16 +131,16 @@ class Base(DeclarativeBase):
 class User(Base):
     __tablename__ = "users"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    username: Mapped[Optional[str]] = mapped_column(String, unique=True)
-    currency: Mapped[Optional[str]] = mapped_column(String(5), default="RM")
+    username: Mapped[str | None] = mapped_column(String, unique=True)
+    currency: Mapped[str | None] = mapped_column(String(5), default="RM")
 
-    transactions: Mapped[List["Transaction"]] = relationship(
+    transactions: Mapped[list["Transaction"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
-    custom_categories: Mapped[List["CustomCategory"]] = relationship(
+    custom_categories: Mapped[list["CustomCategory"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
-    budget: Mapped[List["Budget"]] = relationship(
+    budget: Mapped[list["Budget"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
 
@@ -272,7 +272,7 @@ def init_db():
 # --- Database CRUD Functions ---
 
 
-def save_user(id: int, username: Optional[str]):
+def save_user(id: int, username: str | None):
     with Session(engine) as session:
         user = session.execute(select(User).where(User.id == id)).scalar_one_or_none()
         if not user:
@@ -307,7 +307,7 @@ def save_transaction(
         session.commit()
 
 
-def read_user(id: int) -> Optional[User]:
+def read_user(id: int) -> User | None:
     stmt = select(User).where(User.id == id)
     with Session(engine) as session:
         user = session.execute(stmt).scalar_one_or_none()
@@ -348,8 +348,8 @@ def get_period_total(
     user_id: int,
     period_type: str,
     target_year: int,
-    target_month: Optional[int] = None,
-    target_week: Optional[int] = None,
+    target_month: int | None = None,
+    target_week: int | None = None,
 ):
     income_amount = case(
         (Transaction.type_of_transaction == "income", Transaction.amount), else_=0
@@ -396,7 +396,7 @@ def add_custom_category(user_id: int, name: str, type_of_transaction: str):
         session.commit()
 
 
-def get_category_id(category_name: str) -> Optional[int]:
+def get_category_id(category_name: str) -> int | None:
     stmt = select(DefaultCategory.id).where(DefaultCategory.name == category_name)
     with Session(engine) as session:
         result = session.execute(stmt).scalar_one_or_none()
@@ -409,7 +409,7 @@ def get_category_id(category_name: str) -> Optional[int]:
         return result
 
 
-def get_categories_name(type_of_transaction: str, user_id: int = 0) -> List[str]:
+def get_categories_name(type_of_transaction: str, user_id: int = 0) -> list[str]:
     stmt_default = select(DefaultCategory.name).where(
         DefaultCategory.type_of_transaction == type_of_transaction
     )
@@ -425,7 +425,7 @@ def get_categories_name(type_of_transaction: str, user_id: int = 0) -> List[str]
     return categories_name
 
 
-def get_category_type(category_id: int) -> Optional[str]:
+def get_category_type(category_id: int) -> str | None:
     stmt_default = select(DefaultCategory.type_of_transaction).where(
         DefaultCategory.id == category_id
     )
@@ -442,7 +442,7 @@ def get_category_type(category_id: int) -> Optional[str]:
             return result
 
 
-def get_category_name_by_id(id: int) -> Optional[str]:
+def get_category_name_by_id(id: int) -> str | None:
     stmt_default = select(DefaultCategory.name).where(DefaultCategory.id == id)
     stmt_custom = select(CustomCategory.name).where(CustomCategory.id == id)
     with Session(engine) as session:
@@ -457,7 +457,7 @@ def get_category_name_by_id(id: int) -> Optional[str]:
 
 def get_custom_categories_name_and_id(
     user_id: int, type_of_transaction: str
-) -> List[str]:
+) -> list[str]:
     stmt = (
         select(CustomCategory.name)
         .where(CustomCategory.user_id == user_id)

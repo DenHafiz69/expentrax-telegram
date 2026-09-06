@@ -1,17 +1,17 @@
 import asyncio
-from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
+import logging
+from datetime import datetime
+
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes, ConversationHandler
 
 from utils.database import (
+    get_category_name_by_id,
+    get_currency,
     get_period_total,
     get_recent_transactions,
     get_summary_periods,
-    get_currency,
-    get_category_name_by_id,
 )
-from datetime import datetime
-
-import logging
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO

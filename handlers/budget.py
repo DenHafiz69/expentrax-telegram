@@ -1,21 +1,21 @@
 import asyncio
-from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
+import logging
+from datetime import datetime, timedelta
+
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes, ConversationHandler
 
 from utils.database import (
+    get_budget_by_month,
     get_categories_name,
     get_category_id,
+    get_category_name_by_id,
     get_category_type,
     get_currency,
-    set_budget,
-    get_budget_by_month,
     get_spend_by_month,
-    get_category_name_by_id,
+    set_budget,
 )
-from utils.misc import list_chunker, is_valid_currency
-
-import logging
-from datetime import datetime, timedelta
+from utils.misc import is_valid_currency, list_chunker
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
@@ -222,7 +222,7 @@ async def check_budget_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         message += f"  - Remaining: {currency} {remaining:.2f} {emoji}\n\n"
 
     total_remaining = total_budgeted - total_spent
-    message += f"*Overall Summary*:\n"
+    message += "*Overall Summary*:\n"
     message += f"  - Total Budgeted: {currency} {total_budgeted:.2f}\n"
     message += f"  - Total Spent: {currency} {total_spent:.2f}\n"
     message += f"  - Total Remaining: {currency} {total_remaining:.2f}\n"

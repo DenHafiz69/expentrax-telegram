@@ -1,30 +1,31 @@
-import json
-import pickle
 import asyncio
+import json
 import logging
-from typing import Dict, Optional, Any, Tuple
-from sqlalchemy import select, delete
-from sqlalchemy.orm import Session
+import pickle
+from typing import Any
 
+from sqlalchemy import delete, select
+from sqlalchemy.orm import Session
 from telegram.ext import BasePersistence, PersistenceInput
+
 from utils.database import (
-    engine,
-    BotUserData,
-    BotConversationState,
-    BotChatData,
-    BotData,
     BotCallbackData,
+    BotChatData,
+    BotConversationState,
+    BotData,
+    BotUserData,
+    engine,
 )
 
 logger = logging.getLogger(__name__)
 
 
-def _serialize_key(key: Tuple[Any, ...]) -> str:
+def _serialize_key(key: tuple[Any, ...]) -> str:
     """Serialize conversation key tuple into a JSON string."""
     return json.dumps(list(key))
 
 
-def _deserialize_key(key_str: str) -> Tuple[Any, ...]:
+def _deserialize_key(key_str: str) -> tuple[Any, ...]:
     """Deserialize conversation key string back to a tuple."""
     return tuple(json.loads(key_str))
 
@@ -38,7 +39,7 @@ class SQLAlchemyPersistence(BasePersistence):
     def __init__(
         self,
         db_engine=None,
-        store_data: Optional[PersistenceInput] = None,
+        store_data: PersistenceInput | None = None,
         update_interval: float = 60,
     ):
         if store_data is None:
@@ -53,7 +54,7 @@ class SQLAlchemyPersistence(BasePersistence):
 
     # --- User Data ---
 
-    def _load_user_data_sync(self) -> Dict[int, Dict[str, Any]]:
+    def _load_user_data_sync(self) -> dict[int, dict[str, Any]]:
         with Session(self.engine) as session:
             rows = session.execute(select(BotUserData)).scalars().all()
             result = {}
@@ -68,7 +69,7 @@ class SQLAlchemyPersistence(BasePersistence):
                     )
             return result
 
-    def _load_single_user_data_sync(self, user_id: int) -> Optional[Dict[str, Any]]:
+    def _load_single_user_data_sync(self, user_id: int) -> dict[str, Any] | None:
         with Session(self.engine) as session:
             row = session.execute(
                 select(BotUserData).where(BotUserData.user_id == user_id)
@@ -82,7 +83,7 @@ class SQLAlchemyPersistence(BasePersistence):
                     )
             return None
 
-    def _save_user_data_sync(self, user_id: int, data: Dict[str, Any]) -> None:
+    def _save_user_data_sync(self, user_id: int, data: dict[str, Any]) -> None:
         raw_data = pickle.dumps(data)
         with Session(self.engine) as session:
             row = session.execute(
@@ -99,13 +100,13 @@ class SQLAlchemyPersistence(BasePersistence):
             session.execute(delete(BotUserData).where(BotUserData.user_id == user_id))
             session.commit()
 
-    async def get_user_data(self) -> Dict[int, Dict[str, Any]]:
+    async def get_user_data(self) -> dict[int, dict[str, Any]]:
         return await asyncio.to_thread(self._load_user_data_sync)
 
-    async def update_user_data(self, user_id: int, data: Dict[str, Any]) -> None:
+    async def update_user_data(self, user_id: int, data: dict[str, Any]) -> None:
         await asyncio.to_thread(self._save_user_data_sync, user_id, data)
 
-    async def refresh_user_data(self, user_id: int, user_data: Dict[str, Any]) -> None:
+    async def refresh_user_data(self, user_id: int, user_data: dict[str, Any]) -> None:
         db_data = await asyncio.to_thread(self._load_single_user_data_sync, user_id)
         user_data.clear()
         if db_data:
@@ -116,7 +117,7 @@ class SQLAlchemyPersistence(BasePersistence):
 
     # --- Chat Data ---
 
-    def _load_chat_data_sync(self) -> Dict[int, Dict[str, Any]]:
+    def _load_chat_data_sync(self) -> dict[int, dict[str, Any]]:
         with Session(self.engine) as session:
             rows = session.execute(select(BotChatData)).scalars().all()
             result = {}
@@ -131,7 +132,7 @@ class SQLAlchemyPersistence(BasePersistence):
                     )
             return result
 
-    def _load_single_chat_data_sync(self, chat_id: int) -> Optional[Dict[str, Any]]:
+    def _load_single_chat_data_sync(self, chat_id: int) -> dict[str, Any] | None:
         with Session(self.engine) as session:
             row = session.execute(
                 select(BotChatData).where(BotChatData.chat_id == chat_id)
@@ -145,7 +146,7 @@ class SQLAlchemyPersistence(BasePersistence):
                     )
             return None
 
-    def _save_chat_data_sync(self, chat_id: int, data: Dict[str, Any]) -> None:
+    def _save_chat_data_sync(self, chat_id: int, data: dict[str, Any]) -> None:
         raw_data = pickle.dumps(data)
         with Session(self.engine) as session:
             row = session.execute(
@@ -162,13 +163,13 @@ class SQLAlchemyPersistence(BasePersistence):
             session.execute(delete(BotChatData).where(BotChatData.chat_id == chat_id))
             session.commit()
 
-    async def get_chat_data(self) -> Dict[int, Dict[str, Any]]:
+    async def get_chat_data(self) -> dict[int, dict[str, Any]]:
         return await asyncio.to_thread(self._load_chat_data_sync)
 
-    async def update_chat_data(self, chat_id: int, data: Dict[str, Any]) -> None:
+    async def update_chat_data(self, chat_id: int, data: dict[str, Any]) -> None:
         await asyncio.to_thread(self._save_chat_data_sync, chat_id, data)
 
-    async def refresh_chat_data(self, chat_id: int, chat_data: Dict[str, Any]) -> None:
+    async def refresh_chat_data(self, chat_id: int, chat_data: dict[str, Any]) -> None:
         db_data = await asyncio.to_thread(self._load_single_chat_data_sync, chat_id)
         chat_data.clear()
         if db_data:
@@ -179,7 +180,7 @@ class SQLAlchemyPersistence(BasePersistence):
 
     # --- Bot Data ---
 
-    def _load_bot_data_sync(self) -> Dict[str, Any]:
+    def _load_bot_data_sync(self) -> dict[str, Any]:
         with Session(self.engine) as session:
             row = session.execute(
                 select(BotData).where(BotData.key == "bot_data")
@@ -191,7 +192,7 @@ class SQLAlchemyPersistence(BasePersistence):
                     logger.warning("Failed to deserialize bot_data: %s", e)
             return {}
 
-    def _save_bot_data_sync(self, data: Dict[str, Any]) -> None:
+    def _save_bot_data_sync(self, data: dict[str, Any]) -> None:
         raw_data = pickle.dumps(data)
         with Session(self.engine) as session:
             row = session.execute(
@@ -203,13 +204,13 @@ class SQLAlchemyPersistence(BasePersistence):
                 session.add(BotData(key="bot_data", data=raw_data))
             session.commit()
 
-    async def get_bot_data(self) -> Dict[str, Any]:
+    async def get_bot_data(self) -> dict[str, Any]:
         return await asyncio.to_thread(self._load_bot_data_sync)
 
-    async def update_bot_data(self, data: Dict[str, Any]) -> None:
+    async def update_bot_data(self, data: dict[str, Any]) -> None:
         await asyncio.to_thread(self._save_bot_data_sync, data)
 
-    async def refresh_bot_data(self, bot_data: Dict[str, Any]) -> None:
+    async def refresh_bot_data(self, bot_data: dict[str, Any]) -> None:
         db_data = await asyncio.to_thread(self._load_bot_data_sync)
         bot_data.clear()
         if db_data:
@@ -217,7 +218,7 @@ class SQLAlchemyPersistence(BasePersistence):
 
     # --- Callback Data ---
 
-    def _load_callback_data_sync(self) -> Optional[Any]:
+    def _load_callback_data_sync(self) -> Any | None:
         with Session(self.engine) as session:
             row = session.execute(
                 select(BotCallbackData).where(BotCallbackData.key == "callback_data")
@@ -241,7 +242,7 @@ class SQLAlchemyPersistence(BasePersistence):
                 session.add(BotCallbackData(key="callback_data", data=raw_data))
             session.commit()
 
-    async def get_callback_data(self) -> Optional[Any]:
+    async def get_callback_data(self) -> Any | None:
         return await asyncio.to_thread(self._load_callback_data_sync)
 
     async def update_callback_data(self, data: Any) -> None:
@@ -249,7 +250,7 @@ class SQLAlchemyPersistence(BasePersistence):
 
     # --- Conversation State ---
 
-    def _load_conversations_sync(self, name: str) -> Dict[Tuple[Any, ...], Any]:
+    def _load_conversations_sync(self, name: str) -> dict[tuple[Any, ...], Any]:
         with Session(self.engine) as session:
             rows = (
                 session.execute(
@@ -276,7 +277,7 @@ class SQLAlchemyPersistence(BasePersistence):
             return result
 
     def _save_conversation_sync(
-        self, name: str, key: Tuple[Any, ...], new_state: Optional[Any]
+        self, name: str, key: tuple[Any, ...], new_state: Any | None
     ) -> None:
         key_str = _serialize_key(key)
         with Session(self.engine) as session:
@@ -305,11 +306,11 @@ class SQLAlchemyPersistence(BasePersistence):
                     )
             session.commit()
 
-    async def get_conversations(self, name: str) -> Dict[Tuple[Any, ...], Any]:
+    async def get_conversations(self, name: str) -> dict[tuple[Any, ...], Any]:
         return await asyncio.to_thread(self._load_conversations_sync, name)
 
     async def update_conversation(
-        self, name: str, key: Tuple[Any, ...], new_state: Optional[Any]
+        self, name: str, key: tuple[Any, ...], new_state: Any | None
     ) -> None:
         await asyncio.to_thread(self._save_conversation_sync, name, key, new_state)
 
