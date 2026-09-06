@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes, ConversationHandler
@@ -61,7 +61,7 @@ async def choice_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     context.user_data["budget_choice"] = choice
 
     if choice == "set_change_budget":
-        today = datetime.now()
+        today = datetime.now(tz=UTC)
         next_month = today + timedelta(days=31)
 
         keyboard = [
@@ -98,7 +98,7 @@ async def month_selection_handler(
     selected_month_str = query.data
     month, year = selected_month_str.split()
 
-    month_number = datetime.strptime(month, "%B").month
+    month_number = datetime.strptime(month, "%B").replace(tzinfo=UTC).month
 
     context.user_data["budget_month"] = month_number
     context.user_data["budget_year"] = int(year)
@@ -170,7 +170,7 @@ async def amount_input_handler(
 
     await update.message.reply_text(
         f"✅ Budget for *{category_name}* in "
-        f"*{datetime(context.user_data['budget_year'], context.user_data['budget_month'], 1).strftime('%B %Y')}* "
+        f"*{datetime(context.user_data['budget_year'], context.user_data['budget_month'], 1, tzinfo=UTC).strftime('%B %Y')}* "
         f"has been set to *{currency} {context.user_data['budget_amount']:.2f}*.",
         parse_mode="Markdown",
     )
@@ -182,7 +182,7 @@ async def amount_input_handler(
 async def check_budget_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Displays the budget status for the current month."""
     user_id = update.effective_chat.id
-    today = datetime.now()
+    today = datetime.now(tz=UTC)
 
     budgets = await asyncio.to_thread(
         get_budget_by_month, user_id, today.month, today.year
@@ -240,7 +240,7 @@ async def back_budget_handler(
     if query.data == "start_budget":
         return await start_budget(update, context)
     elif query.data == "back_to_month_selection":
-        today = datetime.now()
+        today = datetime.now(tz=UTC)
         next_month = today + timedelta(days=31)
 
         keyboard = [

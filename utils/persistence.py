@@ -19,6 +19,17 @@ from utils.database import (
 
 logger = logging.getLogger(__name__)
 
+DESERIALIZATION_ERRORS = (
+    pickle.PickleError,
+    AttributeError,
+    EOFError,
+    ImportError,
+    IndexError,
+    KeyError,
+    TypeError,
+    ValueError,
+)
+
 
 def _serialize_key(key: tuple[Any, ...]) -> str:
     """Serialize conversation key tuple into a JSON string."""
@@ -61,7 +72,7 @@ class SQLAlchemyPersistence(BasePersistence):
             for row in rows:
                 try:
                     result[row.user_id] = pickle.loads(row.data)
-                except Exception as e:
+                except DESERIALIZATION_ERRORS as e:
                     logger.warning(
                         "Failed to deserialize user_data for user %s: %s",
                         row.user_id,
@@ -77,7 +88,7 @@ class SQLAlchemyPersistence(BasePersistence):
             if row:
                 try:
                     return pickle.loads(row.data)
-                except Exception as e:
+                except DESERIALIZATION_ERRORS as e:
                     logger.warning(
                         "Failed to deserialize user_data for user %s: %s", user_id, e
                     )
@@ -124,7 +135,7 @@ class SQLAlchemyPersistence(BasePersistence):
             for row in rows:
                 try:
                     result[row.chat_id] = pickle.loads(row.data)
-                except Exception as e:
+                except DESERIALIZATION_ERRORS as e:
                     logger.warning(
                         "Failed to deserialize chat_data for chat %s: %s",
                         row.chat_id,
@@ -140,7 +151,7 @@ class SQLAlchemyPersistence(BasePersistence):
             if row:
                 try:
                     return pickle.loads(row.data)
-                except Exception as e:
+                except DESERIALIZATION_ERRORS as e:
                     logger.warning(
                         "Failed to deserialize chat_data for chat %s: %s", chat_id, e
                     )
@@ -188,7 +199,7 @@ class SQLAlchemyPersistence(BasePersistence):
             if row:
                 try:
                     return pickle.loads(row.data)
-                except Exception as e:
+                except DESERIALIZATION_ERRORS as e:
                     logger.warning("Failed to deserialize bot_data: %s", e)
             return {}
 
@@ -226,7 +237,7 @@ class SQLAlchemyPersistence(BasePersistence):
             if row:
                 try:
                     return pickle.loads(row.data)
-                except Exception as e:
+                except DESERIALIZATION_ERRORS as e:
                     logger.warning("Failed to deserialize callback_data: %s", e)
             return None
 
@@ -267,7 +278,7 @@ class SQLAlchemyPersistence(BasePersistence):
                     k = _deserialize_key(row.key)
                     s = pickle.loads(row.state)
                     result[k] = s
-                except Exception as e:
+                except DESERIALIZATION_ERRORS as e:
                     logger.warning(
                         "Failed to deserialize conversation state for %s (%s): %s",
                         name,
