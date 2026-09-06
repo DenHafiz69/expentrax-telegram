@@ -1,0 +1,5 @@
+id,user_id,name,type_of_transaction
+101,1,Side Hustle,income
+102,1,Gaming,expense
+103,2,Groceries,expense
+104,2,Freelance,income

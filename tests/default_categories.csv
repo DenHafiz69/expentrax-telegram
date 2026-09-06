@@ -1,0 +1,11 @@
+id,name,type_of_transaction
+1,Food,expense
+2,Transport,expense
+3,Housing,expense
+4,Bills,expense
+5,Health,expense
+6,Shopping,expense
+7,Entertainment,expense
+8,Salary,income
+9,Bonus,income
+10,Investment,income

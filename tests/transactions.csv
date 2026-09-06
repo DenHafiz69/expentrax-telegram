@@ -1,0 +1,12 @@
+id,user_id,type_of_transaction,amount,description,timestamp,category_id,category_type
+1,1,income,4500.00,Monthly Salary,2025-09-25 09:00:00,8,default
+2,1,expense,25.50,Lunch with colleagues,2025-09-25 12:30:00,1,default
+3,1,expense,55.00,Weekly bus pass,2025-09-28 08:00:00,2,default
+4,1,income,350.00,Web design project,2025-09-29 18:00:00,101,custom
+5,1,expense,79.90,New video game,2025-09-30 20:00:00,102,custom
+6,2,income,5200.00,October salary,2025-10-01 09:05:00,8,default
+7,2,expense,250.75,Weekly grocery run,2025-10-03 17:45:00,103,custom
+8,1,expense,120.00,Electricity bill,2025-10-05 11:00:00,4,default
+9,2,income,750.00,Logo design work,2025-10-06 15:20:00,104,custom
+10,2,expense,150.00,Internet bill,2025-10-07 10:00:00,4,default
+11,1,expense,45.00,Movie tickets,2025-10-08 21:00:00,7,default

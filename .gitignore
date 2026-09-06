@@ -208,6 +208,5 @@ __marimo__/
 
 *.db
 
-tests
 package/
 build/
