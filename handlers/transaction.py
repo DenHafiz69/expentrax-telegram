@@ -2,7 +2,13 @@ import asyncio
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ContextTypes, ConversationHandler
 
-from utils.database import get_category_id, get_currency, save_transaction, get_categories_name, get_category_type
+from utils.database import (
+    get_category_id,
+    get_currency,
+    save_transaction,
+    get_categories_name,
+    get_category_type,
+)
 from utils.misc import is_valid_currency, list_chunker
 
 import logging
@@ -44,14 +50,17 @@ async def type_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     await query.answer()
 
     # Store transaction type in temporary dictionary
-    context.user_data['type'] = query.data
-    logger.info("Transaction type: %s, User: %s",
-                context.user_data['type'], query.from_user.first_name)
+    context.user_data["type"] = query.data
+    logger.info(
+        "Transaction type: %s, User: %s",
+        context.user_data["type"],
+        query.from_user.first_name,
+    )
 
     await query.edit_message_text(
         text="Got it! How much was this transaction?\n"
         "_Please enter a number, e.g., `100` or `50.50`._",
-        parse_mode='Markdown',
+        parse_mode="Markdown",
     )
 
     return AMOUNT
@@ -62,57 +71,65 @@ async def amount_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     user = update.message.from_user
 
     # Store transaction amount in temporary dictionary
-    context.user_data['amount'] = update.message.text
+    context.user_data["amount"] = update.message.text
 
     # Check if the currency is valid
-    if not is_valid_currency(context.user_data['amount']):
+    if not is_valid_currency(context.user_data["amount"]):
         await update.message.reply_text(
             "❌ Invalid amount. Please try again with a valid number."
         )
         return AMOUNT
 
-    logger.info("Transaction amount: %s, User: %s",
-                context.user_data['amount'], user.first_name)
+    logger.info(
+        "Transaction amount: %s, User: %s", context.user_data["amount"], user.first_name
+    )
 
     await update.message.reply_text(
         f"Perfect! Now, give me a short description for this {context.user_data['type'].lower()}.\n"
         "_E.g., 'Dinner with friends', 'Monthly internet bill'._",
-        parse_mode='Markdown'
+        parse_mode="Markdown",
     )
 
     return DESCRIPTION
 
 
-async def description_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def description_handler(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int:
     """Take the description of transaction and ask for category"""
     user = update.message.from_user
 
     # Store transaction description in temporary dictionary
-    context.user_data['description'] = update.message.text
-    logger.info("Transaction description: %s, User: %s",
-                context.user_data['description'], user.first_name)
+    context.user_data["description"] = update.message.text
+    logger.info(
+        "Transaction description: %s, User: %s",
+        context.user_data["description"],
+        user.first_name,
+    )
 
     user_id = update.effective_user.id
-    if context.user_data['type'] == "Income":
+    if context.user_data["type"] == "Income":
         raw_categories = await asyncio.to_thread(get_categories_name, "income", user_id)
     else:
-        raw_categories = await asyncio.to_thread(get_categories_name, "expense", user_id)
-        
+        raw_categories = await asyncio.to_thread(
+            get_categories_name, "expense", user_id
+        )
+
     categories = list_chunker(categories=raw_categories, chunk_size=3)
 
     keyboard = [
-        [InlineKeyboardButton(category, callback_data=category)
-         for category in row]
+        [InlineKeyboardButton(category, callback_data=category) for category in row]
         for row in categories
     ]
-    keyboard.append([InlineKeyboardButton(
-        "⬅️ Back", callback_data="back_to_description")])
+    keyboard.append(
+        [InlineKeyboardButton("⬅️ Back", callback_data="back_to_description")]
+    )
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.message.reply_text(
         f"Great! Which category best describes this {context.user_data['type'].lower()}? 👇",
         reply_markup=reply_markup,
-        parse_mode='Markdown'
+        parse_mode="Markdown",
     )
 
     return CATEGORY
@@ -134,16 +151,15 @@ async def category_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     await asyncio.to_thread(
         save_transaction,
         user_id=update.effective_chat.id,
-        type_of_transaction=context.user_data['type'].lower(),
-        amount=float(context.user_data['amount']),
-        description=context.user_data['description'],
+        type_of_transaction=context.user_data["type"].lower(),
+        amount=float(context.user_data["amount"]),
+        description=context.user_data["description"],
         timestamp=update.callback_query.message.date,
         category_id=category_id,
-        category_type=category_type
+        category_type=category_type,
     )
 
-    logger.info("Transaction category: %s, User: %s",
-                category_name, user.first_name)
+    logger.info("Transaction category: %s, User: %s", category_name, user.first_name)
     await query.edit_message_text(
         text=f"✅ {context.user_data['type']} added:\n\n"
         f"Description: {context.user_data['description']}\n"
@@ -151,8 +167,11 @@ async def category_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         f"Category: {category_name}\n"
     )
 
-    logger.info("Transaction saved to database: %s, User: %s",
-                context.user_data, user.first_name)
+    logger.info(
+        "Transaction saved to database: %s, User: %s",
+        context.user_data,
+        user.first_name,
+    )
 
     # End the conversation
     return ConversationHandler.END
@@ -164,13 +183,13 @@ async def back_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     await query.answer()
 
     # Get the previous state from the callback data
-    previous_state = query.data.split('_')[-1]
+    previous_state = query.data.split("_")[-1]
 
     if previous_state == "description":
         await query.edit_message_text(
             text=f"Perfect! Now, give me a short description for this {context.user_data['type'].lower()}.\n"
             "_E.g., 'Dinner with friends', 'Monthly internet bill'._",
-            parse_mode='Markdown'
+            parse_mode="Markdown",
         )
         return DESCRIPTION
 
@@ -182,8 +201,6 @@ async def cancel_transaction(update: Update, context: ContextTypes.DEFAULT_TYPE)
     user = update.message.from_user
     logger.info("User %s canceled the conversation.", user.first_name)
 
-    await update.message.reply_text(
-        "❌ Transaction cancelled."
-    )
+    await update.message.reply_text("❌ Transaction cancelled.")
 
     return ConversationHandler.END

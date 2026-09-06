@@ -33,6 +33,7 @@ logger = logging.getLogger(__name__)
 
 # --- Database Connection Setup ---
 
+
 def init_connection_pool():
     """
     Initializes the database connection pool with settings optimized for
@@ -87,15 +88,22 @@ def init_connection_pool():
     if custom_sqlite:
         sqlite_path = custom_sqlite
     else:
-        is_lambda = bool(os.environ.get("AWS_LAMBDA_FUNCTION_NAME") or os.environ.get("AWS_EXECUTION_ENV"))
-        data_dir_writable = os.access("data", os.W_OK) if os.path.exists("data") else True
+        is_lambda = bool(
+            os.environ.get("AWS_LAMBDA_FUNCTION_NAME")
+            or os.environ.get("AWS_EXECUTION_ENV")
+        )
+        data_dir_writable = (
+            os.access("data", os.W_OK) if os.path.exists("data") else True
+        )
         if is_lambda or not data_dir_writable:
             sqlite_path = "/tmp/expentrax.db"
         else:
             try:
                 os.makedirs("data", exist_ok=True)
                 # Test write access to data/expentrax.db
-                if os.path.exists("data/expentrax.db") and not os.access("data/expentrax.db", os.W_OK):
+                if os.path.exists("data/expentrax.db") and not os.access(
+                    "data/expentrax.db", os.W_OK
+                ):
                     sqlite_path = "/tmp/expentrax.db"
                 else:
                     sqlite_path = "data/expentrax.db"
@@ -447,7 +455,9 @@ def get_category_name_by_id(id: int) -> Optional[str]:
             return result
 
 
-def get_custom_categories_name_and_id(user_id: int, type_of_transaction: str) -> List[str]:
+def get_custom_categories_name_and_id(
+    user_id: int, type_of_transaction: str
+) -> List[str]:
     stmt = (
         select(CustomCategory.name)
         .where(CustomCategory.user_id == user_id)

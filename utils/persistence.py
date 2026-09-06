@@ -61,7 +61,11 @@ class SQLAlchemyPersistence(BasePersistence):
                 try:
                     result[row.user_id] = pickle.loads(row.data)
                 except Exception as e:
-                    logger.warning("Failed to deserialize user_data for user %s: %s", row.user_id, e)
+                    logger.warning(
+                        "Failed to deserialize user_data for user %s: %s",
+                        row.user_id,
+                        e,
+                    )
             return result
 
     def _load_single_user_data_sync(self, user_id: int) -> Optional[Dict[str, Any]]:
@@ -73,7 +77,9 @@ class SQLAlchemyPersistence(BasePersistence):
                 try:
                     return pickle.loads(row.data)
                 except Exception as e:
-                    logger.warning("Failed to deserialize user_data for user %s: %s", user_id, e)
+                    logger.warning(
+                        "Failed to deserialize user_data for user %s: %s", user_id, e
+                    )
             return None
 
     def _save_user_data_sync(self, user_id: int, data: Dict[str, Any]) -> None:
@@ -90,9 +96,7 @@ class SQLAlchemyPersistence(BasePersistence):
 
     def _delete_user_data_sync(self, user_id: int) -> None:
         with Session(self.engine) as session:
-            session.execute(
-                delete(BotUserData).where(BotUserData.user_id == user_id)
-            )
+            session.execute(delete(BotUserData).where(BotUserData.user_id == user_id))
             session.commit()
 
     async def get_user_data(self) -> Dict[int, Dict[str, Any]]:
@@ -120,7 +124,11 @@ class SQLAlchemyPersistence(BasePersistence):
                 try:
                     result[row.chat_id] = pickle.loads(row.data)
                 except Exception as e:
-                    logger.warning("Failed to deserialize chat_data for chat %s: %s", row.chat_id, e)
+                    logger.warning(
+                        "Failed to deserialize chat_data for chat %s: %s",
+                        row.chat_id,
+                        e,
+                    )
             return result
 
     def _load_single_chat_data_sync(self, chat_id: int) -> Optional[Dict[str, Any]]:
@@ -132,7 +140,9 @@ class SQLAlchemyPersistence(BasePersistence):
                 try:
                     return pickle.loads(row.data)
                 except Exception as e:
-                    logger.warning("Failed to deserialize chat_data for chat %s: %s", chat_id, e)
+                    logger.warning(
+                        "Failed to deserialize chat_data for chat %s: %s", chat_id, e
+                    )
             return None
 
     def _save_chat_data_sync(self, chat_id: int, data: Dict[str, Any]) -> None:
@@ -149,9 +159,7 @@ class SQLAlchemyPersistence(BasePersistence):
 
     def _delete_chat_data_sync(self, chat_id: int) -> None:
         with Session(self.engine) as session:
-            session.execute(
-                delete(BotChatData).where(BotChatData.chat_id == chat_id)
-            )
+            session.execute(delete(BotChatData).where(BotChatData.chat_id == chat_id))
             session.commit()
 
     async def get_chat_data(self) -> Dict[int, Dict[str, Any]]:
@@ -243,9 +251,15 @@ class SQLAlchemyPersistence(BasePersistence):
 
     def _load_conversations_sync(self, name: str) -> Dict[Tuple[Any, ...], Any]:
         with Session(self.engine) as session:
-            rows = session.execute(
-                select(BotConversationState).where(BotConversationState.handler_name == name)
-            ).scalars().all()
+            rows = (
+                session.execute(
+                    select(BotConversationState).where(
+                        BotConversationState.handler_name == name
+                    )
+                )
+                .scalars()
+                .all()
+            )
             result = {}
             for row in rows:
                 try:
@@ -253,7 +267,12 @@ class SQLAlchemyPersistence(BasePersistence):
                     s = pickle.loads(row.state)
                     result[k] = s
                 except Exception as e:
-                    logger.warning("Failed to deserialize conversation state for %s (%s): %s", name, row.key, e)
+                    logger.warning(
+                        "Failed to deserialize conversation state for %s (%s): %s",
+                        name,
+                        row.key,
+                        e,
+                    )
             return result
 
     def _save_conversation_sync(

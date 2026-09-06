@@ -83,7 +83,9 @@ def get_bot_token() -> str:
 
 
 BOT_TOKEN = get_bot_token()
-if not BOT_TOKEN and not (os.getenv("AWS_LAMBDA_FUNCTION_NAME") or os.getenv("AWS_EXECUTION_ENV")):
+if not BOT_TOKEN and not (
+    os.getenv("AWS_LAMBDA_FUNCTION_NAME") or os.getenv("AWS_EXECUTION_ENV")
+):
     logger.warning("BOT_TOKEN is not configured.")
 
 # State definitions
@@ -206,6 +208,7 @@ application.add_handler(budget_handler)
 
 
 # --- Lambda Webhook Processor ---
+
 
 async def _process_lambda_update(update_data: dict) -> None:
     """Initialize application if needed and process the incoming update."""
