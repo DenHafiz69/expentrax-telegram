@@ -265,8 +265,8 @@ def handler(event: dict, context: Any = None) -> dict:
 
     try:
         asyncio.run(_process_lambda_update(update_data))
-    except Exception as exc:
-        logger.error("Error processing update: %s", exc, exc_info=True)
+    except Exception:
+        logger.exception("Error processing update")
         return {
             "statusCode": 500,
             "headers": {"Content-Type": "application/json"},

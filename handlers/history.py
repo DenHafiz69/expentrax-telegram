@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes, ConversationHandler
@@ -238,7 +238,7 @@ async def monthly_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_id,
         period_type="month",
         target_year=int(year_choice),
-        target_month=datetime.strptime(month_choice, "%b").month,
+        target_month=datetime.strptime(month_choice, "%b").replace(tzinfo=UTC).month,
     )
 
     logger.info("Monthly total: %s, User: %s", month_total, user.first_name)

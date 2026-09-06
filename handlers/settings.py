@@ -191,8 +191,8 @@ async def database_action(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             await update.message.reply_text(
                 f"✅ Category '{category_name}' has been successfully added!"
             )
-        except:
-            pass
+        except Exception:
+            logger.exception("Failed to add category '%s'", category_name)
 
     elif action == "delete_category":
         query = update.callback_query
