@@ -207,6 +207,19 @@ class TestBudgetHandler(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(state, MONTH_SELECTION)
         update.callback_query.edit_message_text.assert_called_once()
 
+    @patch("handlers.budget.get_categories_name")
+    async def test_month_selection_handler_no_categories(self, mock_get_categories):
+        mock_get_categories.return_value = []
+        update = create_mock_callback_update(data="January 2025")
+        context = create_mock_context()
+
+        state = await month_selection_handler(update, context)
+
+        self.assertEqual(state, CATEGORY_SELECTION)
+        update.callback_query.edit_message_text.assert_called_once()
+        _, kwargs = update.callback_query.edit_message_text.call_args
+        self.assertIn("No expense categories found", kwargs["text"])
+
     async def test_cancel_budget(self):
         update = create_mock_message_update()
         context = create_mock_context()

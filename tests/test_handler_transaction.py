@@ -205,6 +205,21 @@ class TestTransactionHandler(unittest.IsolatedAsyncioTestCase):
         _, kwargs = update.callback_query.edit_message_text.call_args
         self.assertIn("expired or invalid", kwargs["text"])
 
+    @patch("handlers.transaction.get_categories_name")
+    async def test_description_handler_no_categories(self, mock_get_categories):
+        mock_get_categories.return_value = []
+        update = create_mock_message_update(user_id=123, text="Dinner")
+        context = create_mock_context(
+            user_data={"type": "Expense", "amount": "50.00"}
+        )
+
+        state = await description_handler(update, context)
+
+        self.assertEqual(state, CATEGORY)
+        update.message.reply_text.assert_called_once()
+        args, _ = update.message.reply_text.call_args
+        self.assertIn("No expense categories found", args[0])
+
     async def test_cancel_transaction(self):
         update = create_mock_message_update()
         context = create_mock_context()

@@ -114,6 +114,18 @@ async def month_selection_handler(
 
     user_id = update.effective_chat.id
     raw_categories = await asyncio.to_thread(get_categories_name, "expense", user_id)
+
+    if not raw_categories:
+        keyboard = [
+            [InlineKeyboardButton("Back", callback_data="back_to_month_selection")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(
+            text="⚠️ No expense categories found. Please add an expense category via /settings first.",
+            reply_markup=reply_markup,
+        )
+        return CATEGORY_SELECTION
+
     expense_categories = list_chunker(categories=raw_categories, chunk_size=3)
 
     keyboard = [

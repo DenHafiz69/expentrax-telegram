@@ -126,12 +126,25 @@ async def description_handler(
     )
 
     user_id = update.effective_user.id
-    if context.user_data["type"] == "Income":
+    tx_type = context.user_data.get("type", "Expense").lower()
+    if tx_type == "income":
         raw_categories = await asyncio.to_thread(get_categories_name, "income", user_id)
     else:
         raw_categories = await asyncio.to_thread(
             get_categories_name, "expense", user_id
         )
+
+    if not raw_categories:
+        keyboard = [
+            [InlineKeyboardButton("⬅️ Back", callback_data="back_to_description")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text(
+            f"⚠️ No {tx_type} categories found.\n"
+            f"Please add a category first via /settings.",
+            reply_markup=reply_markup,
+        )
+        return CATEGORY
 
     categories = list_chunker(categories=raw_categories, chunk_size=3)
 
@@ -145,7 +158,7 @@ async def description_handler(
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.message.reply_text(
-        f"Great! Which category best describes this {context.user_data['type'].lower()}? 👇",
+        f"Great! Which category best describes this {tx_type}? 👇",
         reply_markup=reply_markup,
         parse_mode="Markdown",
     )

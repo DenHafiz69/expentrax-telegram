@@ -254,18 +254,53 @@ class BotCallbackData(Base):
     )
 
 
+# --- Default Categories ---
+DEFAULT_CATEGORIES = [
+    {"name": "Food", "type_of_transaction": "expense"},
+    {"name": "Transport", "type_of_transaction": "expense"},
+    {"name": "Housing", "type_of_transaction": "expense"},
+    {"name": "Bills", "type_of_transaction": "expense"},
+    {"name": "Health", "type_of_transaction": "expense"},
+    {"name": "Shopping", "type_of_transaction": "expense"},
+    {"name": "Entertainment", "type_of_transaction": "expense"},
+    {"name": "Salary", "type_of_transaction": "income"},
+    {"name": "Bonus", "type_of_transaction": "income"},
+    {"name": "Investment", "type_of_transaction": "income"},
+]
+
+
+def seed_default_categories(bind_engine=None):
+    """Seed default categories if they do not already exist."""
+    target_engine = bind_engine or engine
+    with Session(target_engine) as session:
+        existing = set(session.execute(select(DefaultCategory.name)).scalars().all())
+        to_add = [
+            DefaultCategory(
+                name=cat["name"], type_of_transaction=cat["type_of_transaction"]
+            )
+            for cat in DEFAULT_CATEGORIES
+            if cat["name"] not in existing
+        ]
+        if to_add:
+            session.add_all(to_add)
+            session.commit()
+            logger.info("Seeded %d default categories.", len(to_add))
+
+
 # --- Database Initialization ---
 _db_initialized = False
 
 
 def init_db():
     """
-    Initializes the database by creating all tables if they don't exist.
+    Initializes the database by creating all tables if they don't exist
+    and seeding default categories.
     This function is idempotent and safe to call multiple times.
     """
     global _db_initialized
     if not _db_initialized:
         Base.metadata.create_all(bind=engine)
+        seed_default_categories(engine)
         _db_initialized = True
 
 
@@ -396,7 +431,7 @@ def add_custom_category(user_id: int, name: str, type_of_transaction: str):
         session.commit()
 
 
-def get_category_id(category_name: str) -> int | None:
+def get_category_id(category_name: str, user_id: int | None = None) -> int | None:
     stmt = select(DefaultCategory.id).where(DefaultCategory.name == category_name)
     with Session(engine) as session:
         result = session.execute(stmt).scalar_one_or_none()
@@ -404,8 +439,10 @@ def get_category_id(category_name: str) -> int | None:
         return result
     else:
         stmt = select(CustomCategory.id).where(CustomCategory.name == category_name)
+        if user_id is not None:
+            stmt = stmt.where(CustomCategory.user_id == user_id)
         with Session(engine) as session:
-            result = session.execute(stmt).scalar_one_or_none()
+            result = session.execute(stmt).scalars().first()
         return result
 
 
