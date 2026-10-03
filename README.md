@@ -175,6 +175,28 @@ python main.py
 
 ---
 
+## 📊 Local Observability Stack (Docker Compose)
+
+You can run the entire Expentrax stack locally with PostgreSQL, Prometheus, Grafana, and cAdvisor:
+
+```bash
+# Start bot, database, and monitoring stack
+docker compose up -d
+```
+
+### Services & URLs:
+- **Telegram Bot Metrics**: `http://localhost:9090/metrics`
+- **Prometheus UI**: `http://localhost:9091`
+- **Grafana Dashboards**: `http://localhost:3000` (Default credentials: `admin` / `admin`)
+- **cAdvisor Container Monitor**: `http://localhost:8080`
+- **PostgreSQL Exporter**: `http://localhost:9187/metrics`
+
+Pre-provisioned Grafana dashboards are located under the **Expentrax** folder:
+- **Expentrax Bot Overview**: Real-time update rates, handler execution latencies (P50/P95), error counts, income vs expense breakdowns, and process memory/CPU.
+- **Container & Host Metrics**: Real-time CPU %, memory working set, and network I/O per container.
+
+---
+
 ## 🧪 Running Automated Tests
 
 Run the test suite to verify stateless persistence, conversation transitions, and the Lambda webhook handler:

@@ -12,6 +12,7 @@ from utils.database import (
     save_transaction,
 )
 from utils.misc import is_valid_currency, list_chunker
+from utils.metrics import TRANSACTIONS_LOGGED
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
@@ -185,6 +186,11 @@ async def category_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         category_id=category_id,
         category_type=category_type,
     )
+
+    TRANSACTIONS_LOGGED.labels(
+        type=context.user_data["type"].lower(),
+        category=category_name,
+    ).inc()
 
     logger.info("Transaction category: %s, User: %s", category_name, user.first_name)
     await query.edit_message_text(

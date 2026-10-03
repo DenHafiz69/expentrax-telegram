@@ -12,10 +12,12 @@ from telegram.ext import (
     ApplicationBuilder,
     CallbackQueryHandler,
     CommandHandler,
+    ContextTypes,
     ConversationHandler,
     MessageHandler,
     filters,
 )
+from utils.metrics import TELEGRAM_ERRORS, TELEGRAM_UPDATES, start_metrics_server
 
 from handlers.budget import (
     amount_input_handler,
@@ -249,11 +251,19 @@ budget_handler = ConversationHandler(
     per_message=False,
 )
 
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Log the error and increment Prometheus error metric."""
+    logger.error("Exception while handling an update:", exc_info=context.error)
+    error_type = type(context.error).__name__ if context.error else "Unknown"
+    TELEGRAM_ERRORS.labels(handler="global", error_type=error_type).inc()
+
+
 application.add_handler(CommandHandler("start", start_command))
 application.add_handler(transaction_handler)
 application.add_handler(history_handler)
 application.add_handler(settings_handler)
 application.add_handler(budget_handler)
+application.add_error_handler(error_handler)
 
 
 # --- Lambda Webhook Processor ---
@@ -337,6 +347,9 @@ def handler(event: dict, context: Any = None) -> dict:
 
 if __name__ == "__main__":
     logger.info("Starting Expentrax bot locally...")
+
+    METRICS_PORT = int(os.getenv("METRICS_PORT", "9090"))
+    start_metrics_server(METRICS_PORT)
 
     WEBHOOK_URL = os.getenv("WEBHOOK_URL")
     PORT = int(os.getenv("PORT", "8000"))
