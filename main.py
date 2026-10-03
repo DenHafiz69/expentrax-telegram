@@ -19,6 +19,7 @@ from telegram.ext import (
 
 from handlers.budget import (
     amount_input_handler,
+    back_budget_handler,
     cancel_budget,
     category_selection_handler,
     choice_handler,
@@ -26,6 +27,7 @@ from handlers.budget import (
     start_budget,
 )
 from handlers.history import (
+    back_history_handler,
     cancel_history,
     history_choice,
     monthly_handler,
@@ -36,6 +38,7 @@ from handlers.history import (
 )
 from handlers.settings import (
     add_category,
+    back_settings_handler,
     cancel_settings,
     categories_handler,
     database_action,
@@ -126,16 +129,16 @@ application = (
 transaction_handler = ConversationHandler(
     entry_points=[CommandHandler("transaction", start_transaction)],
     states={
-        TYPE: [CallbackQueryHandler(type_handler)],
+        TYPE: [CallbackQueryHandler(type_handler, pattern="^(Expense|Income)$")],
         AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, amount_handler)],
         DESCRIPTION: [
             MessageHandler(filters.TEXT & ~filters.COMMAND, description_handler)
         ],
         CATEGORY: [
+            CallbackQueryHandler(back_handler, pattern="^back_to_description.*$"),
             CallbackQueryHandler(
                 category_handler, pattern="^(?!back_to_description).*$"
             ),
-            CallbackQueryHandler(back_handler, pattern="^back_to_description.*$"),
         ],
     },
     fallbacks=[CommandHandler("cancel", cancel_transaction)],
@@ -147,11 +150,25 @@ transaction_handler = ConversationHandler(
 history_handler = ConversationHandler(
     entry_points=[CommandHandler("history", start_history)],
     states={
-        CHOICE: [CallbackQueryHandler(history_choice)],
-        SUMMARY: [CallbackQueryHandler(summary_handler)],
-        WEEKLY: [CallbackQueryHandler(weekly_handler)],
-        MONTHLY: [CallbackQueryHandler(monthly_handler)],
-        YEARLY: [CallbackQueryHandler(yearly_handler)],
+        CHOICE: [
+            CallbackQueryHandler(history_choice, pattern="^(recent|summary)$")
+        ],
+        SUMMARY: [
+            CallbackQueryHandler(back_history_handler, pattern="^start_history$"),
+            CallbackQueryHandler(summary_handler, pattern="^(weekly|monthly|yearly)$"),
+        ],
+        WEEKLY: [
+            CallbackQueryHandler(back_history_handler, pattern="^back_to_summary$"),
+            CallbackQueryHandler(weekly_handler),
+        ],
+        MONTHLY: [
+            CallbackQueryHandler(back_history_handler, pattern="^back_to_summary$"),
+            CallbackQueryHandler(monthly_handler),
+        ],
+        YEARLY: [
+            CallbackQueryHandler(back_history_handler, pattern="^back_to_summary$"),
+            CallbackQueryHandler(yearly_handler),
+        ],
     },
     fallbacks=[CommandHandler("cancel", cancel_history)],
     name="history_handler",
@@ -162,18 +179,41 @@ history_handler = ConversationHandler(
 settings_handler = ConversationHandler(
     entry_points=[CommandHandler("settings", start_settings)],
     states={
-        SETTINGS_CHOICE: [CallbackQueryHandler(categories_handler)],
-        ADD_CATEGORY: [CallbackQueryHandler(add_category)],
+        SETTINGS_CHOICE: [
+            CallbackQueryHandler(
+                categories_handler,
+                pattern="^(add_category|view_categories|delete_categories|set_currency|reset_data)$",
+            )
+        ],
+        ADD_CATEGORY: [
+            CallbackQueryHandler(back_settings_handler, pattern="^start_settings$"),
+            CallbackQueryHandler(add_category, pattern="^(expense|income)$"),
+        ],
         DATABASE_ACTION: [
+            CallbackQueryHandler(
+                back_settings_handler, pattern="^back_to_delete_choice$"
+            ),
             MessageHandler(filters.TEXT & ~filters.COMMAND, database_action),
             CallbackQueryHandler(database_action),
         ],
-        VIEW_CATEGORIES: [CallbackQueryHandler(view_categories)],
-        DELETE_CATEGORIES: [CallbackQueryHandler(delete_categories)],
+        VIEW_CATEGORIES: [
+            CallbackQueryHandler(back_settings_handler, pattern="^start_settings$"),
+            CallbackQueryHandler(view_categories, pattern="^(expense|income)$"),
+        ],
+        DELETE_CATEGORIES: [
+            CallbackQueryHandler(
+                back_settings_handler, pattern="^(start_settings|back_to_delete_choice)$"
+            ),
+            CallbackQueryHandler(delete_categories, pattern="^(expense|income)$"),
+        ],
         SET_CURRENCY: [
             MessageHandler(filters.TEXT & ~filters.COMMAND, set_currency_handler)
         ],
-        RESET_DATA_CONFIRM: [CallbackQueryHandler(reset_data_confirm_handler)],
+        RESET_DATA_CONFIRM: [
+            CallbackQueryHandler(
+                reset_data_confirm_handler, pattern="^(confirm_reset|cancel_reset)$"
+            )
+        ],
     },
     fallbacks=[CommandHandler("cancel", cancel_settings)],
     name="settings_handler",
@@ -184,9 +224,21 @@ settings_handler = ConversationHandler(
 budget_handler = ConversationHandler(
     entry_points=[CommandHandler("budget", start_budget)],
     states={
-        BUDGET_CHOICE: [CallbackQueryHandler(choice_handler)],
-        MONTH_SELECTION: [CallbackQueryHandler(month_selection_handler)],
-        CATEGORY_SELECTION: [CallbackQueryHandler(category_selection_handler)],
+        BUDGET_CHOICE: [
+            CallbackQueryHandler(
+                choice_handler, pattern="^(set_change_budget|check_budget)$"
+            )
+        ],
+        MONTH_SELECTION: [
+            CallbackQueryHandler(back_budget_handler, pattern="^start_budget$"),
+            CallbackQueryHandler(month_selection_handler),
+        ],
+        CATEGORY_SELECTION: [
+            CallbackQueryHandler(
+                back_budget_handler, pattern="^back_to_month_selection$"
+            ),
+            CallbackQueryHandler(category_selection_handler),
+        ],
         AMOUNT_INPUT: [
             MessageHandler(filters.TEXT & ~filters.COMMAND, amount_input_handler)
         ],
@@ -214,6 +266,7 @@ async def _process_lambda_update(update_data: dict) -> None:
     update = Update.de_json(update_data, application.bot)
     if update:
         await application.process_update(update)
+        await application.update_persistence()
 
 
 def handler(event: dict, context: Any = None) -> dict:

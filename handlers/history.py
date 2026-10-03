@@ -38,14 +38,21 @@ async def start_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
+    user = update.effective_user
     logger.info(
-        "History conversation started, User: %s", update.message.from_user.first_name
+        "History conversation started, User: %s", user.first_name if user else "unknown"
     )
 
-    await update.message.reply_text(
-        "📋 Welcome to the transaction history! What would you like to do?",
-        reply_markup=reply_markup,
-    )
+    if update.callback_query:
+        await update.callback_query.edit_message_text(
+            "📋 Welcome to the transaction history! What would you like to do?",
+            reply_markup=reply_markup,
+        )
+    elif update.message:
+        await update.message.reply_text(
+            "📋 Welcome to the transaction history! What would you like to do?",
+            reply_markup=reply_markup,
+        )
 
     return CHOICE
 
@@ -316,9 +323,12 @@ async def back_history_handler(
 
 async def cancel_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Cancels and ends the conversation."""
-    user = update.message.from_user
-    logger.info("User %s canceled the conversation.", user.first_name)
+    user = update.effective_user
+    logger.info("User %s canceled the conversation.", user.first_name if user else "unknown")
 
-    await update.message.reply_text("❌ History operation cancelled.")
+    if update.callback_query:
+        await update.callback_query.edit_message_text("❌ History operation cancelled.")
+    elif update.message:
+        await update.message.reply_text("❌ History operation cancelled.")
 
     return ConversationHandler.END

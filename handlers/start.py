@@ -1,10 +1,13 @@
 import asyncio
+import logging
 
 from telegram import Update
 from telegram.ext import ContextTypes
 
 # Assuming these are correct imports for your database helper functions
 from utils.database import read_user, save_user
+
+logger = logging.getLogger(__name__)
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -14,7 +17,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
 
     user_id_to_check = update.effective_user.id
-    print(f"DEBUG: Checking database for user ID: {user_id_to_check}")
+    logger.info("Checking database for user ID: %s", user_id_to_check)
 
     user_record = await asyncio.to_thread(read_user, user_id_to_check)
 

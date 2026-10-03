@@ -53,10 +53,16 @@ async def start_settings(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await update.message.reply_text(
-        "⚙️ Welcome to Settings! What would you like to do?",
-        reply_markup=reply_markup,
-    )
+    if update.callback_query:
+        await update.callback_query.edit_message_text(
+            "⚙️ Welcome to Settings! What would you like to do?",
+            reply_markup=reply_markup,
+        )
+    elif update.message:
+        await update.message.reply_text(
+            "⚙️ Welcome to Settings! What would you like to do?",
+            reply_markup=reply_markup,
+        )
 
     return CHOICE
 
@@ -169,8 +175,10 @@ async def database_action(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     action = context.user_data.get("action")
 
     if action == "add_category":
+        if not update.message or not update.message.text:
+            return DATABASE_ACTION
         category_name = update.message.text
-        type_of_transaction = context.user_data.get("type_of_transaction")
+        type_of_transaction = context.user_data.get("type_of_transaction", "expense")
 
         existing_categories = await asyncio.to_thread(
             get_categories_name, type_of_transaction.lower(), user_id
@@ -196,13 +204,20 @@ async def database_action(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     elif action == "delete_category":
         query = update.callback_query
+        if not query:
+            return DATABASE_ACTION
         await query.answer()
         category_name = query.data
         category_id = await asyncio.to_thread(get_category_id, category_name)
-        await asyncio.to_thread(delete_category, user_id, category_id)
-        await query.edit_message_text(
-            text=f"⛔️ Category '{category_name}' has been successfully deleted!"
-        )
+        if category_id:
+            await asyncio.to_thread(delete_category, user_id, category_id)
+            await query.edit_message_text(
+                text=f"⛔️ Category '{category_name}' has been successfully deleted!"
+            )
+        else:
+            await query.edit_message_text(
+                text=f"❌ Category '{category_name}' not found."
+            )
 
     return ConversationHandler.END
 
@@ -254,6 +269,7 @@ async def reset_data_confirm_handler(
 
     if choice == "confirm_reset":
         await asyncio.to_thread(delete_user_data, user_id)
+        context.user_data.clear()
         await query.edit_message_text(
             text="🗑️ All your data has been successfully reset."
         )
@@ -285,14 +301,18 @@ async def back_settings_handler(
             text="🗑️ Which category would you like to delete?", reply_markup=reply_markup
         )
         return DELETE_CATEGORIES
+    return ConversationHandler.END
 
 
 async def cancel_settings(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Cancels and ends the conversation."""
-    user = update.message.from_user
+    user = update.effective_user
 
-    logger.info("User %s canceled the conversation.", user.first_name)
+    logger.info("User %s canceled the conversation.", user.first_name if user else "unknown")
 
-    await update.message.reply_text("❌ Settings operation cancelled.")
+    if update.callback_query:
+        await update.callback_query.edit_message_text("❌ Settings operation cancelled.")
+    elif update.message:
+        await update.message.reply_text("❌ Settings operation cancelled.")
 
     return ConversationHandler.END

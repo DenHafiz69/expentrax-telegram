@@ -44,10 +44,16 @@ async def start_budget(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await update.message.reply_text(
-        "Welcome to the budget manager! What would you like to do?",
-        reply_markup=reply_markup,
-    )
+    if update.callback_query:
+        await update.callback_query.edit_message_text(
+            "Welcome to the budget manager! What would you like to do?",
+            reply_markup=reply_markup,
+        )
+    elif update.message:
+        await update.message.reply_text(
+            "Welcome to the budget manager! What would you like to do?",
+            reply_markup=reply_markup,
+        )
 
     return CHOICE
 
@@ -96,12 +102,15 @@ async def month_selection_handler(
     query = update.callback_query
     await query.answer()
     selected_month_str = query.data
-    month, year = selected_month_str.split()
-
-    month_number = datetime.strptime(month, "%B").replace(tzinfo=UTC).month
-
-    context.user_data["budget_month"] = month_number
-    context.user_data["budget_year"] = int(year)
+    try:
+        month, year = selected_month_str.split()
+        month_number = datetime.strptime(month, "%B").replace(tzinfo=UTC).month
+        context.user_data["budget_month"] = month_number
+        context.user_data["budget_year"] = int(year)
+    except Exception:
+        logger.warning("Invalid month selected: %s", selected_month_str)
+        await query.edit_message_text("Invalid selection. Please try /budget again.")
+        return ConversationHandler.END
 
     user_id = update.effective_chat.id
     raw_categories = await asyncio.to_thread(get_categories_name, "expense", user_id)
@@ -142,7 +151,7 @@ async def amount_input_handler(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> int:
     """Handles the budget amount input and saves it."""
-    user = update.message.from_user
+    user = update.effective_user
     amount = update.message.text
 
     if not is_valid_currency(amount):
@@ -151,6 +160,12 @@ async def amount_input_handler(
         )
         return AMOUNT_INPUT
 
+    if not context.user_data or "budget_category_name" not in context.user_data:
+        await update.message.reply_text(
+            "⚠️ Budget session expired or invalid. Please start again with /budget."
+        )
+        return ConversationHandler.END
+
     context.user_data["budget_amount"] = float(amount)
 
     category_name = context.user_data["budget_category_name"]
@@ -158,24 +173,31 @@ async def amount_input_handler(
     category_type = await asyncio.to_thread(get_category_type, category_id)
     currency = await asyncio.to_thread(get_currency, update.effective_chat.id)
 
+    month = context.user_data.get("budget_month", datetime.now(tz=UTC).month)
+    year = context.user_data.get("budget_year", datetime.now(tz=UTC).year)
+
     await asyncio.to_thread(
         set_budget,
         user_id=user.id,
         budgeted_amount=context.user_data["budget_amount"],
         category_id=category_id,
         category_type=category_type,
-        month=context.user_data["budget_month"],
-        year=context.user_data["budget_year"],
+        month=month,
+        year=year,
     )
 
     await update.message.reply_text(
         f"✅ Budget for *{category_name}* in "
-        f"*{datetime(context.user_data['budget_year'], context.user_data['budget_month'], 1, tzinfo=UTC).strftime('%B %Y')}* "
+        f"*{datetime(year, month, 1, tzinfo=UTC).strftime('%B %Y')}* "
         f"has been set to *{currency} {context.user_data['budget_amount']:.2f}*.",
         parse_mode="Markdown",
     )
 
-    logger.info("Budget set for %s by %s", category_name, user.first_name)
+    logger.info(
+        "Budget set for %s by %s",
+        category_name,
+        user.first_name if user else "unknown",
+    )
     return ConversationHandler.END
 
 
@@ -262,13 +284,17 @@ async def back_budget_handler(
             reply_markup=reply_markup,
         )
         return MONTH_SELECTION
+    return ConversationHandler.END
 
 
 async def cancel_budget(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Cancels and ends the conversation."""
-    user = update.message.from_user
-    logger.info("User %s canceled the budget conversation.", user.first_name)
+    user = update.effective_user
+    logger.info("User %s canceled the budget conversation.", user.first_name if user else "unknown")
 
-    await update.message.reply_text("Budget operation cancelled.")
+    if update.callback_query:
+        await update.callback_query.edit_message_text("Budget operation cancelled.")
+    elif update.message:
+        await update.message.reply_text("Budget operation cancelled.")
 
     return ConversationHandler.END

@@ -38,9 +38,14 @@ async def start_transaction(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text(
-        "What kind of transaction are we tracking today? 💰", reply_markup=reply_markup
-    )
+    if update.callback_query:
+        await update.callback_query.edit_message_text(
+            "What kind of transaction are we tracking today? 💰", reply_markup=reply_markup
+        )
+    elif update.message:
+        await update.message.reply_text(
+            "What kind of transaction are we tracking today? 💰", reply_markup=reply_markup
+        )
     return TYPE
 
 
@@ -70,6 +75,12 @@ async def amount_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     """Take the amount of transaction and ask for description"""
     user = update.message.from_user
 
+    if "type" not in context.user_data:
+        await update.message.reply_text(
+            "⚠️ Transaction session expired or invalid. Please start again with /transaction."
+        )
+        return ConversationHandler.END
+
     # Store transaction amount in temporary dictionary
     context.user_data["amount"] = update.message.text
 
@@ -98,6 +109,12 @@ async def description_handler(
 ) -> int:
     """Take the description of transaction and ask for category"""
     user = update.message.from_user
+
+    if "type" not in context.user_data:
+        await update.message.reply_text(
+            "⚠️ Transaction session expired or invalid. Please start again with /transaction."
+        )
+        return ConversationHandler.END
 
     # Store transaction description in temporary dictionary
     context.user_data["description"] = update.message.text
@@ -140,6 +157,16 @@ async def category_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     query = update.callback_query
     await query.answer()
     user = query.from_user
+
+    if (
+        "type" not in context.user_data
+        or "amount" not in context.user_data
+        or "description" not in context.user_data
+    ):
+        await query.edit_message_text(
+            text="⚠️ Transaction session expired or invalid. Please start again with /transaction."
+        )
+        return ConversationHandler.END
 
     # Store transaction category in temporary dictionary
     category_name = query.data
@@ -186,8 +213,9 @@ async def back_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     previous_state = query.data.split("_")[-1]
 
     if previous_state == "description":
+        tx_type = context.user_data.get("type", "transaction")
         await query.edit_message_text(
-            text=f"Perfect! Now, give me a short description for this {context.user_data['type'].lower()}.\n"
+            text=f"Perfect! Now, give me a short description for this {tx_type.lower()}.\n"
             "_E.g., 'Dinner with friends', 'Monthly internet bill'._",
             parse_mode="Markdown",
         )
@@ -198,9 +226,12 @@ async def back_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
 async def cancel_transaction(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Cancels and ends the conversation."""
-    user = update.message.from_user
-    logger.info("User %s canceled the conversation.", user.first_name)
+    user = update.effective_user
+    logger.info("User %s canceled the conversation.", user.first_name if user else "unknown")
 
-    await update.message.reply_text("❌ Transaction cancelled.")
+    if update.callback_query:
+        await update.callback_query.edit_message_text("❌ Transaction cancelled.")
+    elif update.message:
+        await update.message.reply_text("❌ Transaction cancelled.")
 
     return ConversationHandler.END

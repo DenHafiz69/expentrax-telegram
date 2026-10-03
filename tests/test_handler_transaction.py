@@ -163,6 +163,48 @@ class TestTransactionHandler(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(state, ConversationHandler.END)
 
+    async def test_start_transaction_callback(self):
+        update = create_mock_callback_update()
+        context = create_mock_context()
+
+        state = await start_transaction(update, context)
+
+        self.assertEqual(state, TYPE)
+        update.callback_query.edit_message_text.assert_called_once()
+
+    async def test_amount_handler_missing_type(self):
+        update = create_mock_message_update(text="100")
+        context = create_mock_context(user_data={})
+
+        state = await amount_handler(update, context)
+
+        self.assertEqual(state, ConversationHandler.END)
+        update.message.reply_text.assert_called_once()
+        args, _ = update.message.reply_text.call_args
+        self.assertIn("expired or invalid", args[0])
+
+    async def test_description_handler_missing_type(self):
+        update = create_mock_message_update(text="Dinner")
+        context = create_mock_context(user_data={})
+
+        state = await description_handler(update, context)
+
+        self.assertEqual(state, ConversationHandler.END)
+        update.message.reply_text.assert_called_once()
+        args, _ = update.message.reply_text.call_args
+        self.assertIn("expired or invalid", args[0])
+
+    async def test_category_handler_missing_data(self):
+        update = create_mock_callback_update(data="Food")
+        context = create_mock_context(user_data={})
+
+        state = await category_handler(update, context)
+
+        self.assertEqual(state, ConversationHandler.END)
+        update.callback_query.edit_message_text.assert_called_once()
+        _, kwargs = update.callback_query.edit_message_text.call_args
+        self.assertIn("expired or invalid", kwargs["text"])
+
     async def test_cancel_transaction(self):
         update = create_mock_message_update()
         context = create_mock_context()

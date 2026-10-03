@@ -51,7 +51,7 @@ class SQLAlchemyPersistence(BasePersistence):
         self,
         db_engine=None,
         store_data: PersistenceInput | None = None,
-        update_interval: float = 60,
+        update_interval: float = 1,
     ):
         if store_data is None:
             store_data = PersistenceInput(
@@ -119,7 +119,6 @@ class SQLAlchemyPersistence(BasePersistence):
 
     async def refresh_user_data(self, user_id: int, user_data: dict[str, Any]) -> None:
         db_data = await asyncio.to_thread(self._load_single_user_data_sync, user_id)
-        user_data.clear()
         if db_data:
             user_data.update(db_data)
 
@@ -182,7 +181,6 @@ class SQLAlchemyPersistence(BasePersistence):
 
     async def refresh_chat_data(self, chat_id: int, chat_data: dict[str, Any]) -> None:
         db_data = await asyncio.to_thread(self._load_single_chat_data_sync, chat_id)
-        chat_data.clear()
         if db_data:
             chat_data.update(db_data)
 
@@ -223,7 +221,6 @@ class SQLAlchemyPersistence(BasePersistence):
 
     async def refresh_bot_data(self, bot_data: dict[str, Any]) -> None:
         db_data = await asyncio.to_thread(self._load_bot_data_sync)
-        bot_data.clear()
         if db_data:
             bot_data.update(db_data)
 
