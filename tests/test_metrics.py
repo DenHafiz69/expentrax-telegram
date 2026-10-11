@@ -3,8 +3,6 @@ import unittest
 from prometheus_client import REGISTRY
 
 from utils.metrics import (
-    DB_QUERY_DURATION,
-    HANDLER_DURATION,
     TELEGRAM_ERRORS,
     TELEGRAM_UPDATES,
     TRANSACTIONS_LOGGED,
