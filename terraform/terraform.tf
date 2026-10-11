@@ -1,5 +1,6 @@
 terraform {
-  required_version = ">= 1.5.0"
+  # S3-native state locking (use_lockfile) requires Terraform >= 1.10.
+  required_version = ">= 1.10.0"
 
   required_providers {
     aws = {
@@ -16,14 +17,17 @@ terraform {
     }
   }
 
-  # Remote state is strongly recommended for shared or CI-driven deployments.
-  # Uncomment and provide the bucket/table before running `terraform init`.
+  # Remote state with S3-native locking. No DynamoDB table is required:
+  # `use_lockfile = true` stores the lock as an object in the same bucket.
   #
-  # backend "s3" {
-  #   bucket         = "your-terraform-state-bucket"
-  #   key            = "expentrax/terraform.tfstate"
-  #   region         = "us-east-1"
-  #   dynamodb_table = "terraform-locks"
-  #   encrypt        = true
-  # }
+  # The bucket is created by the bootstrap configuration in ./bootstrap.
+  # If you deploy to a different account or region, re-run the bootstrap and
+  # update `bucket`/`region` below to match its `backend_config` output.
+  backend "s3" {
+    bucket       = "expentrax-tfstate-259924044633-us-east-1"
+    key          = "expentrax/terraform.tfstate"
+    region       = "us-east-1"
+    encrypt      = true
+    use_lockfile = true
+  }
 }
