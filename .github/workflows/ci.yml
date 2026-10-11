@@ -50,6 +50,8 @@ jobs:
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.15.9"
 
       - name: Terraform fmt
         run: terraform fmt -check -recursive
@@ -62,6 +64,14 @@ jobs:
       - name: Terraform validate
         run: terraform validate
         working-directory: terraform
+
+      - name: Terraform init (bootstrap)
+        run: terraform init -backend=false -input=false
+        working-directory: terraform/bootstrap
+
+      - name: Terraform validate (bootstrap)
+        run: terraform validate
+        working-directory: terraform/bootstrap
 
   package:
     runs-on: ubuntu-latest
