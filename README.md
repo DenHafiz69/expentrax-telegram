@@ -83,11 +83,14 @@ The application is built to run both **locally** (via polling or local webhook) 
 │   ├── populate_db.py           # Seed script for default categories and sample records
 │   └── *.csv                    # Sample seed data
 ├── terraform/                   # Infrastructure as Code for AWS deployment
-│   └── main.tf                  # VPC, Subnets, RDS PostgreSQL, Secrets Manager, Lambda config
+│   ├── main.tf                  # VPC, Subnets, RDS PostgreSQL, Secrets Manager, Lambda config
+│   ├── variables.tf             # Input variables
+│   └── outputs.tf               # Webhook URL, DB endpoint, function name
 ├── deploy.md                    # Detailed AWS Lambda & RDS deployment guide
 ├── main.py                      # Application entrypoint (Local Polling/Webhook & Lambda handler)
-├── requirements.txt             # Python dependencies
-└── pyproject.toml               # Project metadata & package configurations
+├── build.sh                     # Builds build/bot_package.zip for Lambda
+├── requirements.txt             # Full dependency set (development + runtime)
+└── requirements-lambda.txt      # Runtime-only dependencies for the Lambda artifact
 ```
 
 ---
@@ -208,5 +211,17 @@ python -m unittest tests/test_stateless_lambda.py -v
 ---
 
 ## ☁️ Deploying to AWS Lambda
+
+The stack is defined with Terraform and deployed as a zip artifact. From the
+repository root:
+
+```bash
+./build.sh          # builds build/bot_package.zip (runtime deps + app code)
+
+cd terraform
+terraform init
+terraform plan      # needs TF_VAR_telegram_bot_token or terraform.tfvars
+terraform apply
+```
 
 See [`deploy.md`](file:///home/denhafiz/Coding/expentrax-telegram/deploy.md) for full instructions on deploying via AWS Lambda and configuring Telegram Webhooks with Amazon RDS PostgreSQL.
