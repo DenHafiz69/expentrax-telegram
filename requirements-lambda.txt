@@ -1,0 +1,15 @@
+# Runtime-only dependencies for the AWS Lambda deployment artifact.
+#
+# Keep this list minimal. Development/test tooling (black, mypy, flake8,
+# bandit, pytest) and unused libraries must NOT be added here so that the
+# packaged zip stays well below Lambda's 50 MB direct-upload limit.
+#
+# Build the artifact with build.sh.
+
+APScheduler==3.11.3
+boto3==1.43.80
+prometheus-client==0.21.1
+psycopg2-binary==2.9.12
+python-dotenv==1.1.1
+python-telegram-bot==22.4
+SQLAlchemy==2.0.43
