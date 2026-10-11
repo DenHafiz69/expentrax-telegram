@@ -1,0 +1,9 @@
+# Copy this file to terraform.tfvars and fill in the required value.
+# terraform.tfvars is git-ignored; do not commit real secrets.
+
+aws_region = "us-east-1"
+
+telegram_bot_token = "123456789:REPLACE_WITH_BOTFATHER_TOKEN"
+
+# Optional overrides
+# lambda_zip_path = "../build/bot_package.zip"
