@@ -7,13 +7,37 @@ HTTP API, and registers the Telegram webhook.
 
 ## Prerequisites
 
-- [Terraform](https://developer.hashicorp.com/terraform/install) `>= 1.5.0`
+- [Terraform](https://developer.hashicorp.com/terraform/install) `>= 1.10.0`
 - [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
   configured with credentials that can manage VPC, RDS, IAM, Lambda, API Gateway,
   and Secrets Manager
 - Python 3.13 and `pip` (for building the artifact)
 - `zip`
 - a Telegram bot token from [@BotFather](https://t.me/BotFather)
+
+## 0. Bootstrap the remote state backend (one-time)
+
+State is stored in S3 with S3-native locking (`use_lockfile = true`); **no
+DynamoDB table is required**. Create the bucket once with the self-contained
+bootstrap configuration:
+
+```bash
+cd terraform/bootstrap
+terraform init
+terraform apply
+```
+
+This provisions a versioned, encrypted, private bucket named
+`expentrax-tfstate-<account_id>-<region>` and prints the `backend_config`
+values. Those are already wired into the `backend "s3"` block in
+`terraform/terraform.tf` for account `259924044633` / `us-east-1`. If you deploy
+to a different account or region, update `bucket`/`region` there to match the
+bootstrap output, then re-run `terraform init -reconfigure`.
+
+Terraform stores state at `expentrax/terraform.tfstate` in that bucket and locks
+concurrent runs by writing a `.tflock` object alongside it. The bootstrap is only
+needed until the bucket exists; if you already have a versioned, private S3
+bucket, skip this step and point the backend `bucket` at it instead.
 
 ## 1. Build the Lambda artifact
 
@@ -99,12 +123,6 @@ This deletes the RDS instance and its data. Secrets are configured with
 | `aws_region` | `us-east-1` | Deployment region |
 | `telegram_bot_token` | *(required)* | BotFather token (sensitive) |
 | `lambda_zip_path` | `../build/bot_package.zip` | Path to the built artifact |
-
-## Remote state (recommended for teams/CI)
-
-State is local by default. To share it, uncomment the `backend "s3"` block in
-`terraform/terraform.tf`, create the bucket and a DynamoDB lock table, then run
-`terraform init -migrate-state`.
 
 ## Troubleshooting
 

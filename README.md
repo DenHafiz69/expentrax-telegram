@@ -85,7 +85,8 @@ The application is built to run both **locally** (via polling or local webhook) 
 ├── terraform/                   # Infrastructure as Code for AWS deployment
 │   ├── main.tf                  # VPC, Subnets, RDS PostgreSQL, Secrets Manager, Lambda config
 │   ├── variables.tf             # Input variables
-│   └── outputs.tf               # Webhook URL, DB endpoint, function name
+│   ├── outputs.tf               # Webhook URL, DB endpoint, function name
+│   └── bootstrap/               # One-time S3 state bucket (S3-native locking)
 ├── deploy.md                    # Detailed AWS Lambda & RDS deployment guide
 ├── main.py                      # Application entrypoint (Local Polling/Webhook & Lambda handler)
 ├── build.sh                     # Builds build/bot_package.zip for Lambda
@@ -216,6 +217,9 @@ The stack is defined with Terraform and deployed as a zip artifact. From the
 repository root:
 
 ```bash
+# one-time: create the S3 state bucket (S3-native locking, no DynamoDB)
+cd terraform/bootstrap && terraform init && terraform apply && cd ../..
+
 ./build.sh          # builds build/bot_package.zip (runtime deps + app code)
 
 cd terraform
