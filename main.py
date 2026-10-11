@@ -17,7 +17,7 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
-from utils.metrics import TELEGRAM_ERRORS, TELEGRAM_UPDATES, start_metrics_server
+from utils.metrics import TELEGRAM_ERRORS, start_metrics_server
 
 from handlers.budget import (
     amount_input_handler,
@@ -112,8 +112,9 @@ CHOICE, SUMMARY, WEEKLY, MONTHLY, YEARLY = range(5)
     CHANGE_AMOUNT,
 ) = range(6)
 
-# Initialize database schema
-init_db()
+# Note: the database schema is initialized lazily on first use (see
+# _ensure_initialized) rather than at import time, so a transient database
+# outage does not break Lambda cold starts.
 
 # Initialize database-backed persistence for stateless execution
 persistence = SQLAlchemyPersistence(db_engine=engine)
@@ -268,9 +269,34 @@ application.add_error_handler(error_handler)
 
 # --- Lambda Webhook Processor ---
 
+# A single, long-lived event loop is reused across warm Lambda invocations.
+# This keeps the initialized Application (and its underlying HTTP client)
+# bound to the same loop for the lifetime of the execution environment.
+_lambda_event_loop: asyncio.AbstractEventLoop | None = None
+
+
+def _get_lambda_event_loop() -> asyncio.AbstractEventLoop:
+    """Return the process-wide event loop used for Lambda invocations."""
+    global _lambda_event_loop
+    if _lambda_event_loop is None or _lambda_event_loop.is_closed():
+        _lambda_event_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(_lambda_event_loop)
+    return _lambda_event_loop
+
+
+def _ensure_initialized() -> None:
+    """
+    Create database tables and seed defaults on first use.
+
+    Safe to call on every invocation: ``init_db`` is idempotent and the
+    work is skipped once the schema has been created.
+    """
+    init_db()
+
 
 async def _process_lambda_update(update_data: dict) -> None:
     """Initialize application if needed and process the incoming update."""
+    _ensure_initialized()
     if not application._initialized:
         await application.initialize()
     update = Update.de_json(update_data, application.bot)
@@ -327,7 +353,7 @@ def handler(event: dict, context: Any = None) -> dict:
         }
 
     try:
-        asyncio.run(_process_lambda_update(update_data))
+        _get_lambda_event_loop().run_until_complete(_process_lambda_update(update_data))
     except Exception:
         logger.exception("Error processing update")
         return {
@@ -347,6 +373,9 @@ def handler(event: dict, context: Any = None) -> dict:
 
 if __name__ == "__main__":
     logger.info("Starting Expentrax bot locally...")
+
+    # Ensure the schema exists for local polling/webhook mode.
+    init_db()
 
     METRICS_PORT = int(os.getenv("METRICS_PORT", "9090"))
     start_metrics_server(METRICS_PORT)
