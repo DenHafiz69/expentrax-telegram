@@ -2,7 +2,7 @@
 
 Expentrax is a personal finance tracker bot for **Telegram**. It allows you to log daily income and expenses, set and monitor category-based monthly budgets, customize categories and currency, and view financial summaries (weekly, monthly, yearly) through interactive Telegram inline menus.
 
-The application is built to run both **locally** (via polling or local webhook) and **serverlessly on AWS Lambda** (stateless architecture with PostgreSQL).
+The application is built to run both **locally** (via polling or local webhook) and **serverlessly on AWS Lambda** (stateless architecture with [Turso](https://turso.tech) / libSQL).
 
 ---
 
@@ -42,8 +42,8 @@ The application is built to run both **locally** (via polling or local webhook) 
                                        ┌──────────────────────────────────┐
                                        │        utils/database.py         │
                                        │   (SQLAlchemy 2.0 + Engine Pool) │
-                                       │  • pool_pre_ping / pool_recycle  │
-                                       │  • RDS PostgreSQL / Local SQLite │
+                                       │  • pool_pre_ping                 │
+                                       │  • Turso (libSQL) / Local SQLite │
                                        └──────────────────────────────────┘
 ```
 
@@ -60,8 +60,8 @@ The application is built to run both **locally** (via polling or local webhook) 
    - Synchronous SQLAlchemy queries are offloaded using `asyncio.to_thread(...)` to ensure database I/O never blocks the event loop.
 
 3. **Resilient Connection Pooling for Lambda**:
-   - Configured with `pool_pre_ping=True` and `pool_recycle=300` so dropped idle connections across warm Lambda invocations are transparently re-established without errors.
-   - Supports AWS Secrets Manager, direct PostgreSQL environment variables (`DATABASE_URL` or `DB_HOST`/`DB_USER`/`DB_PASSWORD`), and local SQLite fallback.
+   - Configured with `pool_pre_ping=True` so dropped idle connections across warm Lambda invocations are transparently re-established without errors.
+   - Supports Turso/libSQL (`DB_URL` + `DB_TOKEN`), AWS Secrets Manager for the Telegram token, a generic SQLAlchemy `DATABASE_URL`, local PostgreSQL (`DB_HOST`/`DB_USER`/`DB_PASSWORD`), and a local SQLite fallback.
 
 ---
 
@@ -83,11 +83,11 @@ The application is built to run both **locally** (via polling or local webhook) 
 │   ├── populate_db.py           # Seed script for default categories and sample records
 │   └── *.csv                    # Sample seed data
 ├── terraform/                   # Infrastructure as Code for AWS deployment
-│   ├── main.tf                  # VPC, Subnets, RDS PostgreSQL, Secrets Manager, Lambda config
+│   ├── main.tf                  # Secrets Manager, IAM, Lambda, API Gateway
 │   ├── variables.tf             # Input variables
-│   ├── outputs.tf               # Webhook URL, DB endpoint, function name
+│   ├── outputs.tf               # Webhook URL, function name
 │   └── bootstrap/               # One-time S3 state bucket (S3-native locking)
-├── deploy.md                    # Detailed AWS Lambda & RDS deployment guide
+├── deploy.md                    # Detailed AWS Lambda deployment guide
 ├── main.py                      # Application entrypoint (Local Polling/Webhook & Lambda handler)
 ├── build.sh                     # Builds build/bot_package.zip for Lambda
 ├── requirements.txt             # Full dependency set (development + runtime)
@@ -139,7 +139,11 @@ BOT_TOKEN=123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ
 WEBHOOK_URL=https://your-domain-or-ngrok.dev
 SECRET_TOKEN=your_secure_random_secret_token
 
-# Optional: Database configuration (defaults to SQLite if omitted)
+# Database: Turso / libSQL (used by the AWS Lambda deployment)
+DB_URL=libsql://your-database-your-org.turso.io
+DB_TOKEN=your_turso_auth_token
+
+# Optional: local PostgreSQL / generic SQLAlchemy URL (defaults to SQLite if omitted)
 # DATABASE_URL=postgresql://user:password@localhost:5432/expentrax
 # DB_HOST=localhost
 # DB_PORT=5432
@@ -224,7 +228,7 @@ cd terraform/bootstrap && terraform init && terraform apply && cd ../..
 
 cd terraform
 terraform init
-terraform plan      # needs TF_VAR_telegram_bot_token or terraform.tfvars
+terraform plan      # needs TF_VAR_telegram_bot_token / TF_VAR_db_url / TF_VAR_db_token, or terraform.tfvars
 terraform apply
 ```
 

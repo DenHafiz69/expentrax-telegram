@@ -1,19 +1,25 @@
 # Deploying Expentrax to AWS Lambda
 
 This guide walks through deploying the Expentrax Telegram bot to AWS Lambda with
-the Terraform configuration in [`terraform/`](terraform/). The stack provisions a
-VPC, RDS PostgreSQL, Secrets Manager, IAM, the Lambda function, an API Gateway
-HTTP API, and registers the Telegram webhook.
+the Terraform configuration in [`terraform/`](terraform/). The stack provisions
+an IAM role, Secrets Manager, the Lambda function, an API Gateway HTTP API, and
+registers the Telegram webhook.
+
+The database is [Turso](https://turso.tech) (libSQL). There is **no VPC, NAT
+gateway, or RDS instance** — the function runs outside a VPC and reaches Turso
+and the Telegram API directly over HTTPS.
 
 ## Prerequisites
 
 - [Terraform](https://developer.hashicorp.com/terraform/install) `>= 1.10.0`
 - [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
-  configured with credentials that can manage VPC, RDS, IAM, Lambda, API Gateway,
-  and Secrets Manager
+  configured with credentials that can manage IAM, Lambda, API Gateway, and
+  Secrets Manager
 - Python 3.13 and `pip` (for building the artifact)
 - `zip`
 - a Telegram bot token from [@BotFather](https://t.me/BotFather)
+- a Turso database URL and auth token (`turso db show <db> --url` and
+  `turso db tokens create <db>`)
 
 ## 0. Bootstrap the remote state backend (one-time)
 
@@ -57,23 +63,30 @@ writes `build/bot_package.zip`. The script prints the final size; keep it below
 > the `runtime` in `terraform/main.tf`, rebuild with a matching version, e.g.
 > `PYTHON_VERSION=3.12 ./build.sh`.
 
-## 2. Provide the bot token
+## 2. Provide credentials
 
-The token is a sensitive Terraform variable and is never committed. Create
-`terraform/terraform.tfvars` (git-ignored):
+Create `terraform/terraform.tfvars` (git-ignored):
 
 ```hcl
 telegram_bot_token = "123456789:REPLACE_WITH_BOTFATHER_TOKEN"
+db_url             = "libsql://your-database-your-org.turso.io"
+db_token           = "REPLACE_WITH_TURSO_AUTH_TOKEN"
 ```
 
-or export it for the session:
+or export them for the session:
 
 ```bash
 export TF_VAR_telegram_bot_token="123456789:REPLACE_WITH_BOTFATHER_TOKEN"
+export TF_VAR_db_url="libsql://your-database-your-org.turso.io"
+export TF_VAR_db_token="REPLACE_WITH_TURSO_AUTH_TOKEN"
 ```
 
 See [`terraform/terraform.tfvars.example`](terraform/terraform.tfvars.example)
-for all options.
+for all options. `telegram_bot_token` and `db_token` are marked sensitive.
+
+> `db_token` is injected into the Lambda as a plain environment variable, so it
+> is visible to anyone who can read the function configuration. If that is a
+> concern, move it into Secrets Manager and read it at runtime.
 
 ## 3. Deploy
 
@@ -85,7 +98,8 @@ terraform apply
 ```
 
 Terraform creates everything and, as a final step, calls Telegram's `setWebhook`
-with the generated API Gateway URL and a random `secret_token`.
+with the generated API Gateway URL and a random `secret_token`. The database
+schema is created and seeded automatically on the first request.
 
 ## 4. Verify
 
@@ -113,16 +127,26 @@ cd terraform
 terraform destroy
 ```
 
-This deletes the RDS instance and its data. Secrets are configured with
-`recovery_window_in_days = 0` so they are removed immediately.
+This removes the Lambda function, API Gateway, and IAM role. The Telegram token
+secret is configured with `recovery_window_in_days = 0` so it is removed
+immediately. The Turso database is external and is **not** affected.
 
 ## Configuration reference
 
 | Variable | Default | Description |
 | --- | --- | --- |
 | `aws_region` | `us-east-1` | Deployment region |
-| `telegram_bot_token` | *(required)* | BotFather token (sensitive) |
+| `db_url` | *(required)* | Turso/libSQL URL (`libsql://…`) |
+| `db_token` | *(required)* | Turso auth token (sensitive) |
 | `lambda_zip_path` | `../build/bot_package.zip` | Path to the built artifact |
+| `telegram_bot_token` | *(required)* | BotFather token (sensitive) |
+
+## Cost
+
+Without NAT gateway or RDS, the recurring AWS cost is limited to Lambda
+invocations, API Gateway requests, CloudWatch Logs, and one Secrets Manager
+secret — typically a few cents per month at personal-bot traffic. Turso has a
+free tier.
 
 ## Troubleshooting
 
@@ -134,8 +158,8 @@ This deletes the RDS instance and its data. Secrets are configured with
 - **`ModuleNotFoundError` / native import errors after deploy** — the artifact
   was built for a different Python version than the Lambda `runtime`. Rebuild
   with the matching `PYTHON_VERSION`.
+- **Database errors in the logs** — check that `DB_URL` and `DB_TOKEN` are valid
+  and that the token has not expired (`turso db tokens create <db>`).
 - **`403 Forbidden` in the Lambda logs** — the webhook `secret_token` stored in
   Telegram does not match the `SECRET_TOKEN` environment variable. Re-run
   `terraform apply` so the webhook is re-registered.
-- **Lambda timeouts reaching the internet** — confirm the NAT gateway and
-  private route table were created; the Lambda runs in private subnets.
