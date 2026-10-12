@@ -39,6 +39,31 @@ def init_connection_pool():
     Initializes the database connection pool with settings optimized for
     AWS Lambda (pool_pre_ping to catch dropped sockets, pool_recycle).
     """
+    turso_url = os.environ.get("DB_URL")
+    if turso_url:
+        # Turso / libSQL remote database (e.g. libsql://<db>-<org>.turso.io)
+        import libsql_experimental  # provided by sqlalchemy-libsql
+
+        # libsql_experimental does not expose `Binary`, which SQLAlchemy's
+        # LargeBinary bind processor requires for BLOB columns. Provide the
+        # missing attribute so binary persistence works over libSQL.
+        if not hasattr(libsql_experimental, "Binary"):
+            libsql_experimental.Binary = bytes
+
+        engine_url = turso_url
+        if not engine_url.startswith("sqlite+"):
+            engine_url = f"sqlite+{engine_url}"
+        if "secure=" not in engine_url:
+            separator = "&" if "?" in engine_url else "?"
+            engine_url = f"{engine_url}{separator}secure=true"
+
+        logger.info("Using Turso/libSQL database from DB_URL.")
+        return create_engine(
+            engine_url,
+            connect_args={"auth_token": os.environ.get("DB_TOKEN", "")},
+            pool_pre_ping=True,
+        )
+
     database_url = os.environ.get("DATABASE_URL")
     if database_url:
         logger.info("Using external database configuration from DATABASE_URL.")
