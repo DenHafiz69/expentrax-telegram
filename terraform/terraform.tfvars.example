@@ -1,9 +1,13 @@
-# Copy this file to terraform.tfvars and fill in the required value.
+# Copy this file to terraform.tfvars and fill in the required values.
 # terraform.tfvars is git-ignored; do not commit real secrets.
 
 aws_region = "us-east-1"
 
 telegram_bot_token = "123456789:REPLACE_WITH_BOTFATHER_TOKEN"
+
+# Turso credentials: `turso db show <db> --url` and `turso db tokens create <db>`
+db_url   = "libsql://your-database-your-org.turso.io"
+db_token = "REPLACE_WITH_TURSO_AUTH_TOKEN"
 
 # Optional overrides
 # lambda_zip_path = "../build/bot_package.zip"
