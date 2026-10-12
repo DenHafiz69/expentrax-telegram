@@ -7,6 +7,10 @@ services:
       - path: .env
         required: false
     environment:
+      # Blank the Turso vars so the local stack uses the bundled PostgreSQL
+      # service instead of the remote Turso database from .env.
+      - DB_URL=
+      - DB_TOKEN=
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_NAME=expentrax
